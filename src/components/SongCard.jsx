@@ -7,12 +7,12 @@ import {fontSize, spacing} from '../constants/dimensions';
 const imageUrl =
   'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/644/325x325/pretty-afternoon-1709859658-TKAtqZGQtZ.jpg';
 
-const SongCard = ({containerStyle, imageStyle}) => {
+const SongCard = ({item, containerStyle, imageStyle}) => {
   return (
     <TouchableOpacity style={[styles.container, containerStyle]}>
-      <Image source={{uri: imageUrl}} style={[styles.coverImage, imageStyle]} />
-      <Text style={styles.title} numberOfLines={1}> Monster Go Home</Text>
-      <Text style={styles.artist} numberOfLines={1}> Alan Walker</Text>
+      <Image source={{uri: item.artwork}} style={[styles.coverImage, imageStyle]} />
+      <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+      <Text style={styles.artist} numberOfLines={1}>{item.artist}</Text>
     </TouchableOpacity>
   );
 };
