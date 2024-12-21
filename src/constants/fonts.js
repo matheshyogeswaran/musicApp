@@ -3,5 +3,6 @@ export const fontFamilies = {
     light: 'Gilroy-Light',
     medium: 'Gilroy-Medium',
     semiBold: 'Gilroy-SemiBold',
+    regular: 'Gilroy-Regular'
 
 }
