@@ -14,6 +14,7 @@ const DrawerNavigation = () => {
       screenOptions={{
         headerShown: false,
         drawerType: 'slide',
+        swipeEdgeWidth:0,
         overlayColor: 'transparent',
       }}
       drawerContent={props => (
