@@ -1,4 +1,11 @@
-import {Image, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import React from 'react';
 import {colors} from '../constants/colors';
 import {fontSize, iconSizes, spacing} from '../constants/dimensions';
@@ -11,13 +18,20 @@ import {
 import {useSharedValue} from 'react-native-reanimated';
 import {Slider} from 'react-native-awesome-slider';
 import MovingText from './MovingText';
+import {useNavigation} from '@react-navigation/native';
 
 const imageUrl =
   'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/653/325x325/lost-my-love-1711587650-eideDUfU5z.jpg';
+
 const FloatingPlayer = () => {
+  const navigation = useNavigation();
   const progress = useSharedValue(0.2);
   const min = useSharedValue(0);
   const max = useSharedValue(1);
+
+  const handleOpenPlayerScreen = () => {
+    navigation.navigate('PLAYER_SCREEN');
+  };
   return (
     <View>
       <View style={{zIndex: 1}}>
@@ -32,13 +46,15 @@ const FloatingPlayer = () => {
           renderBubble={() => <View />}
         />
       </View>
-      <TouchableOpacity style={styles.container} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.container}
+        activeOpacity={0.85}
+        onPress={handleOpenPlayerScreen}>
         <Image source={{uri: imageUrl}} style={styles.coverImage} />
         <View style={styles.titleContainer}>
           <MovingText
             text={'Minnale minnale with anurith hello hello'}
             animationThreshold={10}
-
             style={styles.title}
           />
           {/* <Text style={styles.title}>Minnale minnale with anurith</Text> */}

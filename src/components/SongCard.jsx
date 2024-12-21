@@ -7,12 +7,12 @@ import {fontSize, spacing} from '../constants/dimensions';
 const imageUrl =
   'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/644/325x325/pretty-afternoon-1709859658-TKAtqZGQtZ.jpg';
 
-const SongCard = () => {
+const SongCard = ({containerStyle, imageStyle}) => {
   return (
-    <TouchableOpacity style={styles.container}>
-      <Image source={{uri: imageUrl}} style={styles.coverImage} />
-      <Text style={styles.title}> Monster Go Home</Text>
-      <Text style={styles.artist}> Alan Walker</Text>
+    <TouchableOpacity style={[styles.container, containerStyle]}>
+      <Image source={{uri: imageUrl}} style={[styles.coverImage, imageStyle]} />
+      <Text style={styles.title} numberOfLines={1}> Monster Go Home</Text>
+      <Text style={styles.artist} numberOfLines={1}> Alan Walker</Text>
     </TouchableOpacity>
   );
 };
@@ -21,8 +21,8 @@ export default SongCard;
 
 const styles = StyleSheet.create({
   container: {
-    height: 350,
-    width: 250,
+    // height: 350,
+    //width: 250,
   },
   coverImage: {
     width: 275,
