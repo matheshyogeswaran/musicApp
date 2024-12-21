@@ -9,13 +9,23 @@ import {
 import React from 'react';
 import {colors} from '../constants/colors';
 import AntDesign from 'react-native-vector-icons/AntDesign';
+import Feather from 'react-native-vector-icons/Feather';
 import {fontSize, iconSizes, spacing} from '../constants/dimensions';
 import {fontFamilies} from '../constants/fonts';
+import PlayerRepeatToggle from '../components/PlayerRepeatToggle';
+import PlayerShuffleToggle from '../components/PlayerShuffleToggle';
+import PlayerProgressBar from '../components/PlayerProgressBar';
+import {
+  GotoNextButton,
+  GotoPreviousButton,
+  PlayPauseButton,
+} from '../components/PlayerControls';
 
 const imageUrl =
   'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/644/325x325/pretty-afternoon-1709859658-TKAtqZGQtZ.jpg';
 const PlayerScreen = () => {
   const isLiked = true;
+  const isMute = false;
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
@@ -46,6 +56,30 @@ const PlayerScreen = () => {
             size={iconSizes.md}
           />
         </TouchableOpacity>
+      </View>
+
+      {/* Player Control */}
+      <View style={styles.playerControlContainer}>
+        <TouchableOpacity style={styles.volumnWrapper}>
+          <Feather
+            name={isMute ? 'volume-x' : 'volume-1'}
+            size={iconSizes.md}
+            color={colors.iconPrimary}
+          />
+        </TouchableOpacity>
+        <View style={styles.repeatWrapper}>
+          <PlayerRepeatToggle />
+          <PlayerShuffleToggle />
+        </View>
+      </View>
+
+      {/* player progress bar */}
+      <PlayerProgressBar />
+
+      <View style={styles.playPauseContainer}>
+        <GotoPreviousButton size={iconSizes.xl} />
+        <PlayPauseButton size={iconSizes.xl} />
+        <GotoNextButton size={iconSizes.xl}/>
       </View>
     </View>
   );
@@ -95,12 +129,31 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.regular,
   },
   titleContainer: {
-    flex:1,
-    alignItems:'center',
-    justifyContent:'center'
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titleRowHeartContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  playerControlContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+  },
+  volumnWrapper: {
+    flex: 1,
+  },
+  repeatWrapper: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  playPauseContainer: {
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    gap:spacing.xl,
+    marginTop:spacing.lg,
   },
 });

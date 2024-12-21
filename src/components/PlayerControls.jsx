@@ -13,7 +13,7 @@ export const GotoPreviousButton = ({size = iconSizes.xl}) => {
 };
 
 export const PlayPauseButton = ({size = iconSizes.lg}) => {
-    const isPlaying =false;
+    const isPlaying =true;
   return (
     <TouchableOpacity activeOpacity={0.85}>
       <FontAwesome6
