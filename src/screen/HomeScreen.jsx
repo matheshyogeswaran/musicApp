@@ -7,6 +7,7 @@ import {fontSize, spacing} from '../constants/dimensions';
 import SongCard from '../components/SongCard';
 import SongCardWithCategory from '../components/SongCardWithCategory';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import FloatingPlayer from '../components/FloatingPlayer';
 
 const HomeScreen = () => {
   return (
@@ -20,6 +21,7 @@ const HomeScreen = () => {
             paddingBottom: 400,
           }}
         />
+        <FloatingPlayer/>
       </View>
 
   );
