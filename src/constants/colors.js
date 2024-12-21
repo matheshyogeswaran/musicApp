@@ -4,4 +4,7 @@ export const colors = {
     textSecondary:"#A5C0FF",
     iconPrimary: "#EAF0FF",
     iconSecondary : "#8996B8",
+    minumumTintColor:'#FFFFFF',
+    maximumTintColor:'#555B6A',
+
 };
