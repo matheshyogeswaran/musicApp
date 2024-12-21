@@ -8,13 +8,11 @@ const Stack = createNativeStackNavigator();
 
 const App = () => {
   return (
-  <NavigationContainer>
-    <Stack.Navigator screenOptions={{headerShown:false}}>
-      <Stack.Screen name="HOME_Screen" component={HomeScreen}/>
-
-    </Stack.Navigator>
-
-  </NavigationContainer>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="HOME_Screen" component={HomeScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   )
 }
 

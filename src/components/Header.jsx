@@ -4,9 +4,10 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import {colors} from '../constants/colors';
 import {iconSizes, spacing} from '../constants/dimensions';
+import {SafeAreaView} from 'react-native-safe-area-context';
 const Header = () => {
   return (
-    <View>
+    <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity>
           <FontAwesome5
@@ -23,7 +24,7 @@ const Header = () => {
           />
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -35,5 +36,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
+  },
+  safeArea: {
+    backgroundColor: colors.background,
   },
 });

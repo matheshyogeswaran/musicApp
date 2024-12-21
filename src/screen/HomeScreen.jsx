@@ -6,19 +6,22 @@ import {fontFamilies} from '../constants/fonts';
 import {fontSize, spacing} from '../constants/dimensions';
 import SongCard from '../components/SongCard';
 import SongCardWithCategory from '../components/SongCardWithCategory';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 const HomeScreen = () => {
   return (
-    <View style={styles.container}>
-      <Header />
-      <FlatList
-        data={[1, 2, 3, 4, 5]}
-        renderItem={SongCardWithCategory}
-        contentContainerStyle={{
-          paddingBottom: 400,
-        }}
-      />
-    </View>
+ 
+      <View style={styles.container}>
+        <Header />
+        <FlatList
+          data={[1, 2, 3, 4, 5]}
+          renderItem={SongCardWithCategory}
+          contentContainerStyle={{
+            paddingBottom: 400,
+          }}
+        />
+      </View>
+
   );
 };
 
