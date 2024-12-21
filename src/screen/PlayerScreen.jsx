@@ -20,16 +20,22 @@ import {
   GotoPreviousButton,
   PlayPauseButton,
 } from '../components/PlayerControls';
+import { useNavigation } from '@react-navigation/native';
 
 const imageUrl =
   'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/644/325x325/pretty-afternoon-1709859658-TKAtqZGQtZ.jpg';
 const PlayerScreen = () => {
+
+  const navigation = useNavigation();
+  const goBack = ()=>{
+    navigation.navigate('LIKE_SCREEN');
+  }
   const isLiked = true;
   const isMute = false;
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={goBack}>
           <AntDesign
             name={'arrowleft'}
             size={iconSizes.md}

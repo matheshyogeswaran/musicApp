@@ -5,11 +5,18 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import {colors} from '../constants/colors';
 import {iconSizes, spacing} from '../constants/dimensions';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 const Header = () => {
+  const navigation = useNavigation();
+  const toggleDrawer =()=>{
+    navigation.toggleDrawer();
+
+
+  }
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={toggleDrawer}>
           <FontAwesome5
             name={'grip-lines'}
             color={colors.iconPrimary}
