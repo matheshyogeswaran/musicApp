@@ -1,4 +1,4 @@
-import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Image, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import React from 'react';
 import {colors} from '../constants/colors';
 import {fontSize, iconSizes, spacing} from '../constants/dimensions';
@@ -60,6 +60,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : 0,
   },
   coverImage: {
     height: 60,
