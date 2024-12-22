@@ -30,7 +30,7 @@ const PlayerProgressBar = () => {
         <Text style={[styles.timeText, {color: colors.textPrimary}]}>
           {trackElapsedTime}
         </Text>
-        <Text style={styles.timeText}>
+        <Text style={[styles.timeText, {color: colors.textPrimary}]}>
           {'-'}
           {trackRemainingTime}
         </Text>
