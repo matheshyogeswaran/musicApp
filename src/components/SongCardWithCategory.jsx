@@ -6,7 +6,7 @@ import {colors} from '../constants/colors';
 import {fontFamilies} from '../constants/fonts';
 import TrackPlayer from 'react-native-track-player';
 
-const SongCardWithCategory = ({item}) => {
+const SongCardWithCategory = ({item,onTrackSelect}) => {
   //create a function that will play in queue
   const handlePlayTrack = async (selectedTrack) => {
     const songs =item.songs;
@@ -31,6 +31,7 @@ const SongCardWithCategory = ({item}) => {
     await TrackPlayer.add(afterTracks);
     await TrackPlayer.add(beforeTracks);
     await TrackPlayer.play();
+    onTrackSelect(selectedTrack);
 
   };
   return (

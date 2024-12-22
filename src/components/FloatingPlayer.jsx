@@ -19,18 +19,25 @@ import {useSharedValue} from 'react-native-reanimated';
 import {Slider} from 'react-native-awesome-slider';
 import MovingText from './MovingText';
 import {useNavigation} from '@react-navigation/native';
+import TrackPlayer, {useProgress} from 'react-native-track-player';
 
 const imageUrl =
   'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/653/325x325/lost-my-love-1711587650-eideDUfU5z.jpg';
 
-const FloatingPlayer = () => {
+const FloatingPlayer = ({track}) => {
+  const {duration, position} = useProgress();
   const navigation = useNavigation();
   const progress = useSharedValue(0.2);
   const min = useSharedValue(0);
   const max = useSharedValue(1);
+  const isSliding = useSharedValue(false);
+
+  if (!isSliding.value) {
+    progress.value = duration > 0 ? position / duration : 0;
+  }
 
   const handleOpenPlayerScreen = () => {
-    navigation.navigate('PLAYER_SCREEN');
+    navigation.navigate('PLAYER_SCREEN', {track});
   };
   return (
     <View>
@@ -39,6 +46,17 @@ const FloatingPlayer = () => {
           progress={progress}
           minimumValue={min}
           maximumValue={max}
+          onSlidingStart={() => (isSliding.value = true)}
+          onValueChange={async value => {
+            await TrackPlayer.seekTo(value * duration);
+          }}
+          onSlidingComplete={async value => {
+            if (!isSliding.value) {
+              return;
+            }
+            isSliding.value = false;
+            await TrackPlayer.seekTo(value * duration);
+          }}
           theme={{
             disableMinTrackTintColor: colors.maximumTintColor,
             maximumTrackTintColor: colors.maximumTintColor,
@@ -50,15 +68,15 @@ const FloatingPlayer = () => {
         style={styles.container}
         activeOpacity={0.85}
         onPress={handleOpenPlayerScreen}>
-        <Image source={{uri: imageUrl}} style={styles.coverImage} />
+        <Image source={{uri: track.artwork}} style={styles.coverImage} />
         <View style={styles.titleContainer}>
           <MovingText
-            text={'Minnale minnale with anurith hello hello'}
+            text={track.title}
             animationThreshold={10}
             style={styles.title}
           />
           {/* <Text style={styles.title}>Minnale minnale with anurith</Text> */}
-          <Text style={styles.artist}>Alan Walker</Text>
+          <Text style={styles.artist}>{track.artist}</Text>
         </View>
         <View style={styles.playerControlContainer}>
           <GotoPreviousButton size={iconSizes.md} />

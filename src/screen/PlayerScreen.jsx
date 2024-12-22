@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   Image,
   Platform,
   StyleSheet,
@@ -6,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {colors} from '../constants/colors';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Feather from 'react-native-vector-icons/Feather';
@@ -20,18 +21,51 @@ import {
   GotoPreviousButton,
   PlayPauseButton,
 } from '../components/PlayerControls';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 
-const imageUrl =
-  'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/644/325x325/pretty-afternoon-1709859658-TKAtqZGQtZ.jpg';
+import {useRoute} from '@react-navigation/native';
+import TrackPlayer, {useActiveTrack} from 'react-native-track-player';
+
 const PlayerScreen = () => {
-
+  const activeTrack = useActiveTrack();
+  console.log('active track', activeTrack);
   const navigation = useNavigation();
-  const goBack = ()=>{
-    navigation.navigate('LIKE_SCREEN');
+  const route = useRoute(); // Get route params
+  const [isMute, setIsMute] = useState(false);
+
+  useEffect(() => {
+    setVolume()
+  },[]);
+  const setVolume = async () => {
+    const volume = await TrackPlayer.getVolume();
+    setIsMute(volume === 0 ? true : false);
+  };
+
+  const goBack = () => {
+    // navigation.navigate('LIKE_SCREEN');
+    navigation.goBack();
+  };
+  const handleToggleVolumn = () => {
+    TrackPlayer.setVolume(isMute ? 1 : 0);
+    setIsMute(!isMute);
+  };
+
+  if (!activeTrack) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}>
+        <ActivityIndicator size={'large'} color={colors.iconPrimary} />
+      </View>
+    );
   }
+
   const isLiked = true;
-  const isMute = false;
+
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
@@ -46,14 +80,15 @@ const PlayerScreen = () => {
       </View>
 
       <View style={styles.coverImageContainer}>
-        <Image source={{uri: imageUrl}} style={styles.coverImage} />
+        {/* Use track.artwork and track details dynamically */}
+        <Image source={{uri: activeTrack?.artwork}} style={styles.coverImage} />
       </View>
 
-      {/* render title and artist */}
       <View style={styles.titleRowHeartContainer}>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>Beliver</Text>
-          <Text style={styles.artist}>IMAGINE DRAGON</Text>
+          {/* Display dynamic title and artist */}
+          <Text style={styles.title}>{activeTrack?.title}</Text>
+          <Text style={styles.artist}>{activeTrack?.artist}</Text>
         </View>
         <TouchableOpacity>
           <AntDesign
@@ -64,9 +99,10 @@ const PlayerScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Player Control */}
       <View style={styles.playerControlContainer}>
-        <TouchableOpacity style={styles.volumnWrapper}>
+        <TouchableOpacity
+          style={styles.volumnWrapper}
+          onPress={handleToggleVolumn}>
           <Feather
             name={isMute ? 'volume-x' : 'volume-1'}
             size={iconSizes.md}
@@ -79,13 +115,12 @@ const PlayerScreen = () => {
         </View>
       </View>
 
-      {/* player progress bar */}
       <PlayerProgressBar />
 
       <View style={styles.playPauseContainer}>
         <GotoPreviousButton size={iconSizes.xl} />
         <PlayPauseButton size={iconSizes.xl} />
-        <GotoNextButton size={iconSizes.xl}/>
+        <GotoNextButton size={iconSizes.xl} />
       </View>
     </View>
   );
@@ -156,10 +191,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   playPauseContainer: {
-    flexDirection:'row',
-    justifyContent:'center',
-    alignItems:'center',
-    gap:spacing.xl,
-    marginTop:spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.xl,
+    marginTop: spacing.lg,
   },
 });
