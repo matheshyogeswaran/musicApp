@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: Platform.OS === 'ios' ? spacing.xl : 0,
-    paddingVertical: spacing.md,
+   // marginTop: Platform.OS === 'ios' ? spacing.xl : 0,
+    paddingVertical: Platform.OS === 'ios' ? spacing.xm : spacing.lg,
     paddingHorizontal: spacing.lg,
   },
   safeArea: {
