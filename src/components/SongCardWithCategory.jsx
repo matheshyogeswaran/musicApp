@@ -2,14 +2,16 @@ import {StyleSheet, Text, View, FlatList} from 'react-native';
 import React from 'react';
 import SongCard from './SongCard';
 import {fontSize, spacing} from '../constants/dimensions';
-import {colors} from '../constants/colors';
+//import {colors} from '../constants/colors';
 import {fontFamilies} from '../constants/fonts';
 import TrackPlayer from 'react-native-track-player';
+import {useTheme} from '@react-navigation/native';
 
-const SongCardWithCategory = ({item,onTrackSelect}) => {
+const SongCardWithCategory = ({item, onTrackSelect}) => {
+  const {colors} = useTheme();
   //create a function that will play in queue
-  const handlePlayTrack = async (selectedTrack) => {
-    const songs =item.songs;
+  const handlePlayTrack = async selectedTrack => {
+    const songs = item.songs;
     console.log('seleted song-------', selectedTrack);
     //make a queue and play songs
     const trackIndex = songs.findIndex(
@@ -17,14 +19,14 @@ const SongCardWithCategory = ({item,onTrackSelect}) => {
     );
     console.log('track', trackIndex);
     //if track not exist
-    if(trackIndex === -1){
+    if (trackIndex === -1) {
       return;
     }
-    const beforeTracks = songs.slice(0,trackIndex);
-    console.log("before",beforeTracks);
+    const beforeTracks = songs.slice(0, trackIndex);
+    console.log('before', beforeTracks);
 
-    const afterTracks = songs.slice(trackIndex+1);
-    console.log("after",afterTracks)
+    const afterTracks = songs.slice(trackIndex + 1);
+    console.log('after', afterTracks);
 
     await TrackPlayer.reset();
     await TrackPlayer.add(selectedTrack);
@@ -32,11 +34,12 @@ const SongCardWithCategory = ({item,onTrackSelect}) => {
     await TrackPlayer.add(beforeTracks);
     await TrackPlayer.play();
     onTrackSelect(selectedTrack);
-
   };
   return (
     <View style={styles.container}>
-      <Text style={styles.headingText}>{item.title}</Text>
+      <Text style={[styles.headingText, {color: colors.textPrimary}]}>
+        {item.title}
+      </Text>
       <FlatList
         data={item.songs}
         renderItem={({item}) => (
@@ -48,6 +51,7 @@ const SongCardWithCategory = ({item,onTrackSelect}) => {
             }}
           />
         )}
+        showsHorizontalScrollIndicator={false}
         horizontal={true}
         ItemSeparatorComponent={<View style={{marginHorizontal: spacing.lg}} />}
         contentContainerStyle={{
@@ -66,7 +70,7 @@ const styles = StyleSheet.create({
   },
   headingText: {
     fontSize: fontSize.xl,
-    color: colors.textPrimary,
+
     fontFamily: fontFamilies.bold,
     marginVertical: spacing.lg,
     paddingHorizontal: spacing.lg,

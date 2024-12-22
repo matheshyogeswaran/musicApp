@@ -1,14 +1,17 @@
 import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import React from 'react';
-import {colors} from '../constants/colors';
+//import {colors} from '../constants/colors';
 import {fontFamilies} from '../constants/fonts';
 import {fontSize, spacing} from '../constants/dimensions';
 import TrackPlayer from 'react-native-track-player';
+import { useTheme } from '@react-navigation/native';
 
 const imageUrl =
   'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/001/644/325x325/pretty-afternoon-1709859658-TKAtqZGQtZ.jpg';
 
 const SongCard = ({item, containerStyle, imageStyle ,handlePlay}) => {
+
+  const {colors} =useTheme();
   // const handlePlay = async item => {
   //   // console.log('item', item);
   //   await TrackPlayer.add(item);
@@ -19,14 +22,14 @@ const SongCard = ({item, containerStyle, imageStyle ,handlePlay}) => {
       style={[styles.container, containerStyle]}
       onPress={() => handlePlay(item)}>
       <Image
-        source={{uri: item.artwork}}
+        source={{uri: item?.artwork}}
         style={[styles.coverImage, imageStyle]}
       />
-      <Text style={styles.title} numberOfLines={1}>
-        {item.title}
+      <Text style={[styles.title,{color: colors.textPrimary}]} numberOfLines={1}>
+        {item?.title}
       </Text>
-      <Text style={styles.artist} numberOfLines={1}>
-        {item.artist}
+      <Text style={[styles.artist,{color: colors.textSecondary,}]} numberOfLines={1}>
+        {item?.artist}
       </Text>
     </TouchableOpacity>
   );
@@ -45,14 +48,14 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   title: {
-    color: colors.textPrimary,
+    
     fontFamily: fontFamilies.medium,
     textAlign: 'center',
     fontSize: fontSize.lg,
     paddingVertical: spacing.sm,
   },
   artist: {
-    color: colors.textSecondary,
+    
     textAlign: 'center',
     fontSize: fontSize.md,
     fontFamily: fontFamilies.regular,

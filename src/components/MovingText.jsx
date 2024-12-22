@@ -8,12 +8,14 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { useTheme } from '@react-navigation/native';
 
 const MovingText = ({text, animationThreshold, style}) => {
+  const {colors} = useTheme();
   const translaeX = useSharedValue(0);
-  const shouldAnimate = text.length >= animationThreshold;
+  const shouldAnimate = text?.length >= animationThreshold;
 
-  const textWidth = text.length * 3;
+  const textWidth = text?.length * 3;
 
   useEffect(() => {
     if (!shouldAnimate) return;

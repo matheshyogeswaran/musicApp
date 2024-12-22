@@ -2,11 +2,13 @@ import {StyleSheet, Text, View, TouchableOpacity, Platform} from 'react-native';
 import React from 'react';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import {colors} from '../constants/colors';
+// import {colors} from '../constants/colors';
 import {iconSizes, spacing} from '../constants/dimensions';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useTheme } from '@react-navigation/native';
 const Header = () => {
+  const {colors} = useTheme();
+
   const navigation = useNavigation();
   const toggleDrawer =()=>{
     navigation.toggleDrawer();
@@ -14,7 +16,7 @@ const Header = () => {
 
   }
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea,{ backgroundColor: colors.background}]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={toggleDrawer}>
           <FontAwesome5
@@ -46,6 +48,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   safeArea: {
-    backgroundColor: colors.background,
+   
   },
 });

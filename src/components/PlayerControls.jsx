@@ -2,11 +2,17 @@ import {TouchableOpacity} from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import {iconSizes} from '../constants/dimensions';
-import {colors} from '../constants/colors';
-import TrackPlayer, {State, useIsPlaying, usePlaybackState} from 'react-native-track-player';
+import TrackPlayer, {
+  State,
+  useIsPlaying,
+  usePlaybackState,
+} from 'react-native-track-player';
 import {useEffect, useState} from 'react';
+import {useTheme} from '@react-navigation/native';
 
 export const PlayPauseButton = ({size = iconSizes.lg}) => {
+  const {colors} = useTheme();
+
   const {playing} = useIsPlaying();
   const playbackState = usePlaybackState(); // Hook to monitor playback state
   const [isPlaying, setIsPlaying] = useState(false); // Local state for immediate updates
@@ -39,6 +45,7 @@ export const PlayPauseButton = ({size = iconSizes.lg}) => {
 
 // Previous Button
 export const GotoPreviousButton = ({size = iconSizes.xl}) => {
+  const {colors} = useTheme();
   const skipToPrevious = async () => {
     try {
       await TrackPlayer.skipToPrevious(); // Skip to previous track
@@ -55,6 +62,7 @@ export const GotoPreviousButton = ({size = iconSizes.xl}) => {
 };
 
 export const GotoNextButton = ({size = iconSizes.xl}) => {
+  const {colors} = useTheme();
   const skipToNext = async () => {
     try {
       await TrackPlayer.skipToNext(); // Skip to next track

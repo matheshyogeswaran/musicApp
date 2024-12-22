@@ -1,15 +1,17 @@
 import {StyleSheet, Text, View} from 'react-native';
 import React from 'react';
-import {colors} from '../constants/colors';
+//import {colors} from '../constants/colors';
 import {fontFamilies} from '../constants/fonts';
 import {fontSize, spacing} from '../constants/dimensions';
 import {useSharedValue} from 'react-native-reanimated';
 import {Slider} from 'react-native-awesome-slider';
 import TrackPlayer, {useProgress} from 'react-native-track-player';
 import {formatSecondsToMinute} from '../utills';
+import {useTheme} from '@react-navigation/native';
 
 const PlayerProgressBar = () => {
   const {duration, position} = useProgress();
+  const {colors} = useTheme();
 
   const progress = useSharedValue(0.25);
   const min = useSharedValue(0);
@@ -25,7 +27,9 @@ const PlayerProgressBar = () => {
   return (
     <View>
       <View style={styles.timeRow}>
-        <Text style={styles.timeText}>{trackElapsedTime}</Text>
+        <Text style={[styles.timeText, {color: colors.textPrimary}]}>
+          {trackElapsedTime}
+        </Text>
         <Text style={styles.timeText}>
           {'-'}
           {trackRemainingTime}
@@ -72,7 +76,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   timeText: {
-    color: colors.textPrimary,
     fontFamily: fontFamilies.regular,
     fontSize: fontSize.sm,
     opacity: 0.75,

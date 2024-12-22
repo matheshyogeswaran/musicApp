@@ -1,6 +1,6 @@
 import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import React, {useState} from 'react';
-import {colors} from '../constants/colors';
+// import {colors} from '../constants/colors';
 import Header from '../components/Header';
 import {fontFamilies} from '../constants/fonts';
 import {fontSize, spacing} from '../constants/dimensions';
@@ -9,9 +9,14 @@ import SongCardWithCategory from '../components/SongCardWithCategory';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import FloatingPlayer from '../components/FloatingPlayer';
 import {songsWithCategory} from '../data/songsWithCategory';
-import TrackPlayer, {Event, useTrackPlayerEvents } from 'react-native-track-player';
+import TrackPlayer, {
+  Event,
+  useTrackPlayerEvents,
+} from 'react-native-track-player';
+import {useTheme} from '@react-navigation/native';
 
 const HomeScreen = () => {
+  const {colors} = useTheme();
   const [currentTrack, setCurrentTrack] = useState(null); // Track the current song
 
   // Listen for track changes and update Floating Player
@@ -22,7 +27,7 @@ const HomeScreen = () => {
     }
   });
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, {backgroundColor: colors.background}]}>
       <Header />
       <FlatList
         data={songsWithCategory}
@@ -45,7 +50,6 @@ export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background,
     flex: 1,
   },
 });
