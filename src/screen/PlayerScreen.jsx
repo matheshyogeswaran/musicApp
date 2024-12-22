@@ -121,7 +121,7 @@ const PlayerScreen = () => {
           />
         </TouchableOpacity>
         <View style={styles.repeatWrapper}>
-          <PlayerRepeatToggle />
+          {/* <PlayerRepeatToggle /> */}
           <PlayerShuffleToggle />
         </View>
       </View>
