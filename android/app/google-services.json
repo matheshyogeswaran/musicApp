@@ -1,0 +1,29 @@
+{
+  "project_info": {
+      "project_number": "358881380983",
+      "project_id": "music-app-5a84d",
+      "storage_bucket": "music-app-5a84d.firebasestorage.app"
+  },
+  "client": [
+      {
+          "client_info": {
+              "mobilesdk_app_id": "1:358881380983:android:daf89b47ba0e090467d472",
+              "android_client_info": {
+                  "package_name": "com.musicappTrackly"
+              }
+          },
+          "oauth_client": [],
+          "api_key": [
+              {
+                  "current_key": "AIzaSyDo1PZU1rVUaQG6CqcNZ93fEEAdndb8X9A"
+              }
+          ],
+          "services": {
+              "appinvite_service": {
+                  "other_platform_oauth_client": []
+              }
+          }
+      }
+  ],
+  "configuration_version": "1"
+}

@@ -35,7 +35,7 @@ const App = () => {
   useSetupPlayer({ onLoad });
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer theme={isDarkMode ? darkTheme : lightTheme}>
+      <NavigationContainer theme={lightTheme}>
         {/* <StackNavigation /> */}
         <DrawerNavigation />
       </NavigationContainer>
