@@ -1,5 +1,5 @@
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   DrawerContentScrollView,
   DrawerItem,
@@ -11,14 +11,32 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Octicons from 'react-native-vector-icons/Octicons';
 import {fontFamilies} from '../constants/fonts';
-import {useTheme} from '@react-navigation/native';
+import {useNavigation, useTheme} from '@react-navigation/native';
 import {useThemeStore} from '../store/themeStore';
+import auth from '@react-native-firebase/auth';
+import { AuthContext } from './DrawerNavigation';
 const CustomDrawerContent = props => {
   const {colors} = useTheme();
   // const isDarkMode = true;
+  const navigation = useNavigation();
+  const {isAuthenticated, setIsAuthenticated} = useContext(AuthContext);
   const {isDarkMode, toggleTheme} = useThemeStore();
   const toggleDrawer = () => {
     props.navigation.toggleDrawer();
+  };
+
+  const handleSignOut = () => {
+    auth()
+      .signOut()
+      .then(() => {
+        console.log('User signed out successfully');
+        setIsAuthenticated(false);
+        props.navigation.closeDrawer();
+       // navigation.navigate('SIGN_IN');
+      })
+      .catch(error => {
+        console.error('Error signing out:', error);
+      });
   };
   return (
     <DrawerContentScrollView
@@ -129,6 +147,21 @@ const CustomDrawerContent = props => {
           style={styles.drawerItem}
           onPress={() => {
             props.navigation.navigate('LIKE_SCREEN');
+          }}
+        />
+        <DrawerItem
+          label={'Sign Out'}
+          icon={() => (
+            <AntDesign
+              name={'logout'}
+              color={colors.iconSecondary}
+              size={iconSizes.md}
+            />
+          )}
+          labelStyle={[styles.labelStyle, {color: colors.textPrimary}]}
+          style={styles.drawerItem}
+          onPress={() => {
+            handleSignOut();
           }}
         />
       </View>
