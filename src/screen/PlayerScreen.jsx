@@ -27,7 +27,7 @@ import {
   PlayPauseButton,
 } from '../components/PlayerControls';
 import {useNavigation, useTheme} from '@react-navigation/native';
-import TrackPlayer, {useActiveTrack} from 'react-native-track-player';
+import TrackPlayer, {useActiveTrack, usePlaybackState,State} from 'react-native-track-player';
 import useLikeSongs from '../store/likeStore';
 import {isExist} from '../utills';
 
@@ -43,7 +43,7 @@ const PlayerScreen = () => {
   const activeTrack = useActiveTrack();
   const navigation = useNavigation();
   const [isMute, setIsMute] = useState(false);
-
+  const playbackState = usePlaybackState(); // Get playback state
   // Generate a random image on load
   const [randomImage, setRandomImage] = useState(
     randomImages[Math.floor(Math.random() * randomImages.length)],
@@ -53,13 +53,25 @@ const PlayerScreen = () => {
   const rotate = useSharedValue(0);
 
   useEffect(() => {
-    setVolume();
-    // Infinite rotation animation for the image
-    rotate.value = withRepeat(
-      withTiming(360, {duration: 10000, easing: Easing.linear}), // 10s for a full rotation
-      -1, // Infinite loop
-    );
-  }, []);
+    // Start infinite rotation animation
+    const startAnimation = () => {
+      rotate.value = withRepeat(
+        withTiming(360, {duration: 10000, easing: Easing.linear}), // 10s for full rotation
+        -1, // Infinite loop
+      );
+    };
+
+    const stopAnimation = () => {
+      rotate.value = withTiming(0, {duration: 500}); // Reset rotation when paused
+    };
+
+    // Manage animation based on playback state
+    if (playbackState.state === State.Playing) {
+      startAnimation();
+    } else {
+      stopAnimation();
+    }
+  }, [playbackState.state, rotate]);
 
   const setVolume = async () => {
     const volume = await TrackPlayer.getVolume();
@@ -81,6 +93,10 @@ const PlayerScreen = () => {
       transform: [{rotate: `${rotate.value}deg`}],
     };
   });
+
+  const stopAnimation = () => {
+    rotate.value = withTiming(0, {duration: 500}); // Reset rotation when paused
+  };
 
   if (!activeTrack) {
     return (
