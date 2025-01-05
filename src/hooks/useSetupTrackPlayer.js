@@ -14,18 +14,16 @@ const setupPlayer = async () => {
             Capability.SkipToPrevious,
             Capability.Stop,
         ],
-        // Capabilities that will show up when the notification is in the compact form on Android
         compactCapabilities: [
             Capability.Play,
             Capability.Pause,
             Capability.SkipToNext,
             Capability.SkipToPrevious,
-            Capability.Stop,],
+        ],
     });
-    await TrackPlayer.setVolume(0.7);
     await TrackPlayer.setRepeatMode(RepeatMode.Queue);
+};
 
-}
 export const useSetupPlayer = ({ onLoad }) => {
     const isInitialized = useRef(false);
     useEffect(() => {
