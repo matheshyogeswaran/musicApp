@@ -1,19 +1,24 @@
+import React, {useEffect, useState} from 'react';
 import {
   ActivityIndicator,
-  Image,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
-//import {colors} from '../constants/colors';
+import Animated, {
+  Easing,
+  useSharedValue,
+  withTiming,
+  withRepeat,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
+import FastImage from 'react-native-fast-image'; // Optimized for performance
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Feather from 'react-native-vector-icons/Feather';
 import {fontSize, iconSizes, spacing} from '../constants/dimensions';
 import {fontFamilies} from '../constants/fonts';
-import PlayerRepeatToggle from '../components/PlayerRepeatToggle';
 import PlayerShuffleToggle from '../components/PlayerShuffleToggle';
 import PlayerProgressBar from '../components/PlayerProgressBar';
 import {
@@ -22,54 +27,68 @@ import {
   PlayPauseButton,
 } from '../components/PlayerControls';
 import {useNavigation, useTheme} from '@react-navigation/native';
-
-import {useRoute} from '@react-navigation/native';
 import TrackPlayer, {useActiveTrack} from 'react-native-track-player';
 import useLikeSongs from '../store/likeStore';
 import {isExist} from '../utills';
 
+// Array of Random Images
+const randomImages = [
+  'https://thumbs.dreamstime.com/b/vinyl-record-disc-black-lp-album-isolated-long-play-disk-blank-orange-label-40595108.jpg',
+  'https://th.bing.com/th/id/R.a209ea09bd65cde41b7160ea5e6fd277?rik=jqvwc3pz%2fgLdKA&pid=ImgRaw&r=0',
+];
+
 const PlayerScreen = () => {
   const {colors} = useTheme();
   const {likedSongs, addToLiked} = useLikeSongs();
-  //console("liked songs",likedSongs);
   const activeTrack = useActiveTrack();
-  console.log('active track', activeTrack);
   const navigation = useNavigation();
-  const route = useRoute(); // Get route params
   const [isMute, setIsMute] = useState(false);
+
+  // Generate a random image on load
+  const [randomImage, setRandomImage] = useState(
+    randomImages[Math.floor(Math.random() * randomImages.length)],
+  );
+
+  // Animation Values
+  const rotate = useSharedValue(0);
 
   useEffect(() => {
     setVolume();
+    // Infinite rotation animation for the image
+    rotate.value = withRepeat(
+      withTiming(360, {duration: 10000, easing: Easing.linear}), // 10s for a full rotation
+      -1, // Infinite loop
+    );
   }, []);
+
   const setVolume = async () => {
     const volume = await TrackPlayer.getVolume();
     setIsMute(volume === 0 ? true : false);
   };
 
   const goBack = () => {
-    // navigation.navigate('LIKE_SCREEN');
     navigation.goBack();
   };
+
   const handleToggleVolumn = () => {
     TrackPlayer.setVolume(isMute ? 1 : 0);
     setIsMute(!isMute);
   };
 
+  // Image rotation animation
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{rotate: `${rotate.value}deg`}],
+    };
+  });
+
   if (!activeTrack) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}>
+      <View style={[styles.centered, {backgroundColor: colors.background}]}>
         <ActivityIndicator size={'large'} color={colors.iconPrimary} />
       </View>
     );
   }
-
-  const isLiked = true;
 
   return (
     <View style={[styles.container, {backgroundColor: colors.background}]}>
@@ -86,19 +105,25 @@ const PlayerScreen = () => {
         </Text>
       </View>
 
+      {/* Animated Cover Image */}
       <View style={styles.coverImageContainer}>
-        {/* Use track.artwork and track details dynamically */}
-        <Image source={{uri: activeTrack?.artwork}} style={styles.coverImage} />
+        <Animated.View style={[styles.animatedCover, animatedStyle]}>
+          <FastImage
+            source={{uri: randomImage}} // Use random image
+            style={styles.coverImage}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+        </Animated.View>
       </View>
 
+      {/* Track Title & Artist */}
       <View style={styles.titleRowHeartContainer}>
         <View style={styles.titleContainer}>
-          {/* Display dynamic title and artist */}
           <Text style={[styles.title, {color: colors.textPrimary}]}>
             {activeTrack?.title}
           </Text>
           <Text style={[styles.artist, {color: colors.textSecondary}]}>
-            {activeTrack?.artist}
+            {activeTrack?.artist || 'Unknown Artist'}
           </Text>
         </View>
         <TouchableOpacity onPress={() => addToLiked(activeTrack)}>
@@ -110,6 +135,7 @@ const PlayerScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Player Controls */}
       <View style={styles.playerControlContainer}>
         <TouchableOpacity
           style={styles.volumnWrapper}
@@ -121,7 +147,6 @@ const PlayerScreen = () => {
           />
         </TouchableOpacity>
         <View style={styles.repeatWrapper}>
-          {/* <PlayerRepeatToggle /> */}
           <PlayerShuffleToggle />
         </View>
       </View>
@@ -142,7 +167,6 @@ export default PlayerScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-
     paddingTop: spacing.lg,
     padding: spacing.lg,
   },
@@ -150,7 +174,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: Platform.OS === 'ios' ? spacing.xl : 0,
-    // paddingHorizontal: spacing.lg,
     width: '100%',
   },
   headerText: {
@@ -159,15 +182,20 @@ const styles = StyleSheet.create({
     fontStyle: fontFamilies.medium,
     flex: 1,
   },
-  coverImage: {
-    height: 300,
-    width: 300,
-    borderRadius: 15,
-  },
   coverImageContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: spacing.lg,
+  },
+  animatedCover: {
+    borderRadius: 150,
+    borderWidth: 5,
+    borderColor: '#FFD700', // Golden border
+  },
+  coverImage: {
+    height: 300,
+    width: 300,
+    borderRadius: 150,
   },
   title: {
     fontSize: fontSize.xl,
@@ -204,5 +232,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xl,
     marginTop: spacing.lg,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
