@@ -89,15 +89,15 @@ const LikeScreen = () => {
             handlePlay={item => handlePlayTrack(item)}
           />
         )}
-        numColumns={2}
+         numColumns={1}
         contentContainerStyle={{
           paddingBottom: 400,
           paddingHorizontal: 20,
         }}
-        columnWrapperStyle={{
-          justifyContent: 'space-between',
-          marginVertical: spacing.lg,
-        }}
+        // columnWrapperStyle={{
+        //   justifyContent: 'space-between',
+        //   marginVertical: spacing.lg,
+        // }}
       />
       {currentTrack && <FloatingPlayer track={currentTrack} />}
     </View>
