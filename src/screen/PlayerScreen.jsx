@@ -27,7 +27,11 @@ import {
   PlayPauseButton,
 } from '../components/PlayerControls';
 import {useNavigation, useTheme} from '@react-navigation/native';
-import TrackPlayer, {useActiveTrack, usePlaybackState,State} from 'react-native-track-player';
+import TrackPlayer, {
+  useActiveTrack,
+  usePlaybackState,
+  State,
+} from 'react-native-track-player';
 import useLikeSongs from '../store/likeStore';
 import {isExist} from '../utills';
 
@@ -135,9 +139,14 @@ const PlayerScreen = () => {
       {/* Track Title & Artist */}
       <View style={styles.titleRowHeartContainer}>
         <View style={styles.titleContainer}>
-          <Text style={[styles.title, {color: colors.textPrimary}]}>
+          <Text
+            style={[styles.title, {color: colors.textPrimary}]}
+            numberOfLines={1} // Limits to one line
+            ellipsizeMode="tail" // Adds "..." when text overflows
+          >
             {activeTrack?.title}
           </Text>
+
           <Text style={[styles.artist, {color: colors.textSecondary}]}>
             {activeTrack?.artist || 'Unknown Artist'}
           </Text>
