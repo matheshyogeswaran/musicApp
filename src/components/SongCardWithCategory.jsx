@@ -11,11 +11,14 @@ const SongCardWithCategory = ({item, onTrackSelect}) => {
   const {colors} = useTheme();
   //create a function that will play in queue
   const handlePlayTrack = async selectedTrack => {
+    if (!selectedTrack || !selectedTrack.url) {
+      return;
+    }
     const songs = item.songs;
-    console.log('seleted song-------', selectedTrack);
+    console.log('selected song-------', selectedTrack);
     //make a queue and play songs
     const trackIndex = songs.findIndex(
-      track => track.url === selectedTrack.url,
+      track => track?.url === selectedTrack.url,
     );
     console.log('track', trackIndex);
     //if track not exist

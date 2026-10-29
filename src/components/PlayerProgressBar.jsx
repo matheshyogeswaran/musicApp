@@ -1,8 +1,7 @@
-import {StyleSheet, Text, View} from 'react-native';
 import React from 'react';
-//import {colors} from '../constants/colors';
+import {StyleSheet, Text, View} from 'react-native';
 import {fontFamilies} from '../constants/fonts';
-import {fontSize, spacing} from '../constants/dimensions';
+import {fontSize, spacing, radius} from '../constants/dimensions';
 import {useSharedValue} from 'react-native-reanimated';
 import {Slider} from 'react-native-awesome-slider';
 import TrackPlayer, {useProgress} from 'react-native-track-player';
@@ -13,7 +12,7 @@ const PlayerProgressBar = () => {
   const {duration, position} = useProgress();
   const {colors} = useTheme();
 
-  const progress = useSharedValue(0.25);
+  const progress = useSharedValue(0);
   const min = useSharedValue(0);
   const max = useSharedValue(1);
   const isSliding = useSharedValue(false);
@@ -23,23 +22,18 @@ const PlayerProgressBar = () => {
   }
 
   const trackElapsedTime = formatSecondsToMinute(position);
-  const trackRemainingTime = formatSecondsToMinute(duration - position);
+  const trackRemainingTime =
+    duration >= position
+      ? `-${formatSecondsToMinute(duration - position)}`
+      : '00:00';
+
   return (
-    <View>
-      <View style={styles.timeRow}>
-        <Text style={[styles.timeText, {color: colors.textPrimary}]}>
-          {trackElapsedTime}
-        </Text>
-        <Text style={[styles.timeText, {color: colors.textPrimary}]}>
-          {'-'}
-          {trackRemainingTime}
-        </Text>
-      </View>
+    <View style={styles.container}>
       <Slider
         style={styles.sliderContainer}
         containerStyle={{
-          height: 7,
-          borderRadius: spacing.sm,
+          height: 5,
+          borderRadius: radius.full,
         }}
         progress={progress}
         minimumValue={min}
@@ -56,11 +50,21 @@ const PlayerProgressBar = () => {
           await TrackPlayer.seekTo(value * duration);
         }}
         theme={{
-          disableMinTrackTintColor: colors.maximumTintColor,
-          maximumTrackTintColor: colors.maximumTintColor,
+          disableMinTrackTintColor: colors.primary || '#6366F1',
+          maximumTrackTintColor: colors.maximumTintColor || 'rgba(255,255,255,0.12)',
+          minimumTrackTintColor: colors.primary || '#6366F1',
         }}
         renderBubble={() => <View />}
       />
+
+      <View style={styles.timeRow}>
+        <Text style={[styles.timeText, {color: colors.textSecondary}]}>
+          {trackElapsedTime}
+        </Text>
+        <Text style={[styles.timeText, {color: colors.textSecondary}]}>
+          {trackRemainingTime}
+        </Text>
+      </View>
     </View>
   );
 };
@@ -68,19 +72,24 @@ const PlayerProgressBar = () => {
 export default PlayerProgressBar;
 
 const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    paddingVertical: spacing.sm,
+  },
+  sliderContainer: {
+    width: '100%',
+    height: 24,
+    justifyContent: 'center',
+  },
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingRight: spacing.sm,
-    marginTop: spacing.xl,
+    marginTop: spacing.xs,
   },
   timeText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: fontSize.sm,
-    opacity: 0.75,
-  },
-  sliderContainer: {
-    marginVertical: spacing.xl,
+    fontFamily: fontFamilies.medium,
+    fontSize: fontSize.xs,
+    letterSpacing: 0.2,
   },
 });

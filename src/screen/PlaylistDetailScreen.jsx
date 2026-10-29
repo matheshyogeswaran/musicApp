@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useMemo} from 'react';
 import {
   Alert,
   FlatList,
@@ -12,10 +12,11 @@ import {
   View,
 } from 'react-native';
 import {useNavigation, useRoute, useTheme} from '@react-navigation/native';
-import AntDesign from 'react-native-vector-icons/AntDesign';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import TrackPlayer, {useActiveTrack} from 'react-native-track-player';
-import {fontSize, iconSizes, spacing} from '../constants/dimensions';
+import {fontSize, spacing, radius} from '../constants/dimensions';
 import {fontFamilies} from '../constants/fonts';
 import usePlaylistStore from '../store/playlistStore';
 import useSongStore from '../store/songStore';
@@ -25,6 +26,7 @@ import FloatingPlayer from '../components/FloatingPlayer';
 const PlaylistDetailScreen = () => {
   const {colors} = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const route = useRoute();
   const activeTrack = useActiveTrack();
   const {playlistId} = route.params || {};
@@ -38,37 +40,19 @@ const PlaylistDetailScreen = () => {
   } = usePlaylistStore();
 
   const allLocalSongs = useSongStore(state => state.songs);
-
   const playlist = playlists.find(p => p.id === playlistId);
 
-  // Rename modal
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(playlist?.name || '');
-
-  // Add songs modal
   const [isAddSongsOpen, setIsAddSongsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // 3-dots menu modal
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  if (!playlist) {
-    return (
-      <View style={[styles.container, styles.centered, {backgroundColor: colors.background}]}>
-        <Text style={[styles.notFoundText, {color: colors.textPrimary}]}>
-          Playlist not found
-        </Text>
-        <TouchableOpacity
-          style={styles.backHomeBtn}
-          onPress={() => navigation.goBack()}>
-          <Text style={styles.backHomeBtnText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   // Playback handlers
   const handlePlaySong = async (track, index) => {
+    if (!playlist?.songs) {
+      return;
+    }
     try {
       await TrackPlayer.reset();
       await TrackPlayer.add(playlist.songs);
@@ -80,7 +64,7 @@ const PlaylistDetailScreen = () => {
   };
 
   const handlePlayAll = async () => {
-    if (!playlist.songs || playlist.songs.length === 0) {
+    if (!playlist?.songs || playlist.songs.length === 0) {
       return;
     }
     try {
@@ -94,7 +78,7 @@ const PlaylistDetailScreen = () => {
   };
 
   const handleShufflePlay = async () => {
-    if (!playlist.songs || playlist.songs.length === 0) {
+    if (!playlist?.songs || playlist.songs.length === 0) {
       return;
     }
     try {
@@ -117,7 +101,11 @@ const PlaylistDetailScreen = () => {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => removeSongFromPlaylist(playlist.id, track.url),
+          onPress: () => {
+            if (track?.url) {
+              removeSongFromPlaylist(playlist.id, track.url);
+            }
+          },
         },
       ],
     );
@@ -127,7 +115,7 @@ const PlaylistDetailScreen = () => {
     setIsMenuOpen(false);
     Alert.alert(
       'Delete Playlist',
-      `Are you sure you want to delete "${playlist.name}"?`,
+      `Are you sure you want to delete "${playlist.name}"? This cannot be undone.`,
       [
         {text: 'Cancel', style: 'cancel'},
         {
@@ -151,54 +139,84 @@ const PlaylistDetailScreen = () => {
     setIsRenameOpen(false);
   };
 
-  // Filter songs for the add-songs picker modal
-  const filteredLocalSongs = allLocalSongs.filter(song => {
-    const query = searchQuery.toLowerCase();
-    const titleMatch = (song.title || '').toLowerCase().includes(query);
-    const artistMatch = (song.artist || '').toLowerCase().includes(query);
-    return titleMatch || artistMatch;
-  });
+  const filteredLocalSongs = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) {
+      return allLocalSongs;
+    }
+    return allLocalSongs.filter(song => {
+      const titleMatch = (song.title || '').toLowerCase().includes(query);
+      const artistMatch = (song.artist || '').toLowerCase().includes(query);
+      return titleMatch || artistMatch;
+    });
+  }, [allLocalSongs, searchQuery]);
+
+  if (!playlist) {
+    return (
+      <View style={[styles.container, styles.centered, {backgroundColor: colors.background}]}>
+        <Text style={[styles.notFoundText, {color: colors.textPrimary}]}>
+          Playlist not found
+        </Text>
+        <TouchableOpacity
+          style={[styles.backHomeBtn, {backgroundColor: colors.primary || '#6366F1'}]}
+          onPress={() => navigation.goBack()}>
+          <Text style={styles.backHomeBtnText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, {backgroundColor: colors.background}]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
+          style={[
+            styles.headerBtn,
+            {
+              backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '22',
+              borderColor: colors.border || 'rgba(255,255,255,0.08)',
+            },
+          ]}
           onPress={() => navigation.goBack()}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <AntDesign
-            name="arrowleft"
-            size={iconSizes.md}
-            color={colors.iconPrimary}
-          />
+          <Feather name="arrow-left" size={20} color={colors.iconPrimary} />
         </TouchableOpacity>
+
         <Text
           style={[styles.headerTitle, {color: colors.textPrimary}]}
           numberOfLines={1}>
           {playlist.name}
         </Text>
+
         <TouchableOpacity
+          style={[
+            styles.headerBtn,
+            {
+              backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '22',
+              borderColor: colors.border || 'rgba(255,255,255,0.08)',
+            },
+          ]}
           onPress={() => setIsMenuOpen(true)}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <MaterialIcons
-            name="more-vert"
-            size={iconSizes.md}
-            color={colors.iconPrimary}
-          />
+          <Feather name="more-vertical" size={18} color={colors.iconPrimary} />
         </TouchableOpacity>
       </View>
 
-      {/* Playlist Hero Banner */}
+      {/* Playlist Hero Section */}
       <View style={styles.heroContainer}>
         <View
           style={[
             styles.heroArtwork,
-            {backgroundColor: colors.maximumTintColor + '22'},
+            {
+              backgroundColor: (colors.primary || '#6366F1') + '1A',
+              borderColor: (colors.primary || '#6366F1') + '33',
+            },
           ]}>
           <MaterialIcons
             name="library-music"
-            size={48}
-            color={colors.iconPrimary}
+            size={42}
+            color={colors.primary || '#6366F1'}
           />
         </View>
 
@@ -209,38 +227,41 @@ const PlaylistDetailScreen = () => {
         </Text>
         <Text style={[styles.heroSubtitle, {color: colors.textSecondary}]}>
           {playlist.songs.length}{' '}
-          {playlist.songs.length === 1 ? 'song' : 'songs'}
+          {playlist.songs.length === 1 ? 'track' : 'tracks'}
         </Text>
 
-        {/* Action Buttons */}
+        {/* Action Controls */}
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity
             style={[
               styles.playAllBtn,
-              playlist.songs.length === 0 && {opacity: 0.5},
+              {backgroundColor: colors.primary || '#6366F1'},
+              playlist.songs.length === 0 && styles.btnDisabled,
             ]}
             disabled={playlist.songs.length === 0}
+            activeOpacity={0.8}
             onPress={handlePlayAll}>
-            <MaterialIcons
-              name="play-arrow"
-              size={iconSizes.md}
-              color="#FFFFFF"
-            />
+            <Feather name="play" size={16} color="#FFFFFF" style={styles.iconMarginSm} />
             <Text style={styles.playAllBtnText}>Play All</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.secondaryBtn,
-              {borderColor: colors.maximumTintColor + '44'},
-              playlist.songs.length === 0 && {opacity: 0.5},
+              {
+                backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '15',
+                borderColor: colors.border || 'rgba(255,255,255,0.08)',
+              },
+              playlist.songs.length === 0 && styles.btnDisabled,
             ]}
             disabled={playlist.songs.length === 0}
+            activeOpacity={0.7}
             onPress={handleShufflePlay}>
-            <MaterialIcons
+            <Feather
               name="shuffle"
-              size={iconSizes.sm}
+              size={15}
               color={colors.iconPrimary}
+              style={styles.iconMarginXs}
             />
             <Text
               style={[styles.secondaryBtnText, {color: colors.textPrimary}]}>
@@ -251,57 +272,70 @@ const PlaylistDetailScreen = () => {
           <TouchableOpacity
             style={[
               styles.secondaryBtn,
-              {borderColor: colors.maximumTintColor + '44'},
+              {
+                backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '15',
+                borderColor: colors.border || 'rgba(255,255,255,0.08)',
+              },
             ]}
+            activeOpacity={0.7}
             onPress={() => setIsAddSongsOpen(true)}>
-            <AntDesign
+            <Feather
               name="plus"
-              size={iconSizes.sm}
+              size={15}
               color={colors.iconPrimary}
+              style={styles.iconMarginXs}
             />
             <Text
               style={[styles.secondaryBtnText, {color: colors.textPrimary}]}>
-              Add Songs
+              Add Tracks
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Song List or Empty State */}
+      {/* Song List */}
       {playlist.songs.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons
-            name="music-off"
-            size={56}
+          <Feather
+            name="music"
+            size={48}
             color={colors.iconSecondary}
             style={{marginBottom: spacing.md}}
           />
           <Text style={[styles.emptyTitle, {color: colors.textPrimary}]}>
-            This playlist is empty
+            This Playlist is Empty
           </Text>
           <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
-            Add local songs from your library to start listening.
+            Add tracks from your local audio library to begin listening.
           </Text>
           <TouchableOpacity
-            style={styles.emptyAddBtn}
+            style={[
+              styles.emptyAddBtn,
+              {backgroundColor: colors.primary || '#6366F1'},
+            ]}
+            activeOpacity={0.85}
             onPress={() => setIsAddSongsOpen(true)}>
-            <AntDesign
+            <Feather
               name="plus"
-              size={iconSizes.sm}
+              size={16}
               color="#FFFFFF"
-              style={{marginRight: spacing.sm}}
+              style={{marginRight: spacing.xs}}
             />
-            <Text style={styles.emptyAddBtnText}>Add Songs from Device</Text>
+            <Text style={styles.emptyAddBtnText}>Add Songs from Library</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={playlist.songs}
           keyExtractor={(item, index) => `${item.url}_${index}`}
-          contentContainerStyle={{paddingBottom: 120}}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.md,
+            paddingBottom: activeTrack ? insets.bottom + 110 : insets.bottom + 40,
+          }}
           renderItem={({item, index}) => (
             <SongCard
               item={item}
+              index={index}
               handlePlay={() => handlePlaySong(item, index)}
               showRemove={true}
               onRemove={handleRemoveSong}
@@ -322,11 +356,19 @@ const PlaylistDetailScreen = () => {
           style={[styles.pickerContainer, {backgroundColor: colors.background}]}>
           {/* Picker Header */}
           <View style={styles.pickerHeader}>
-            <Text style={[styles.pickerTitle, {color: colors.textPrimary}]}>
-              Add Songs
-            </Text>
+            <View>
+              <Text style={[styles.pickerTitle, {color: colors.textPrimary}]}>
+                Add Songs
+              </Text>
+              <Text style={[styles.pickerSubtitle, {color: colors.textSecondary}]}>
+                {playlist.name}
+              </Text>
+            </View>
             <TouchableOpacity
-              style={styles.pickerDoneBtn}
+              style={[
+                styles.pickerDoneBtn,
+                {backgroundColor: colors.primary || '#6366F1'},
+              ]}
               onPress={() => setIsAddSongsOpen(false)}>
               <Text style={styles.pickerDoneText}>Done</Text>
             </TouchableOpacity>
@@ -337,28 +379,28 @@ const PlaylistDetailScreen = () => {
             style={[
               styles.searchBox,
               {
-                backgroundColor: colors.maximumTintColor + '1A',
-                borderColor: colors.maximumTintColor + '33',
+                backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '1A',
+                borderColor: colors.border || 'rgba(255,255,255,0.08)',
               },
             ]}>
-            <AntDesign
-              name="search1"
-              size={iconSizes.sm}
+            <Feather
+              name="search"
+              size={16}
               color={colors.iconSecondary}
               style={{marginRight: spacing.sm}}
             />
             <TextInput
               style={[styles.searchInput, {color: colors.textPrimary}]}
-              placeholder="Search local songs..."
+              placeholder="Search by title or artist..."
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery !== '' && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <AntDesign
-                  name="closecircle"
-                  size={iconSizes.sm}
+                <Feather
+                  name="x-circle"
+                  size={16}
                   color={colors.iconSecondary}
                 />
               </TouchableOpacity>
@@ -369,36 +411,43 @@ const PlaylistDetailScreen = () => {
           <FlatList
             data={filteredLocalSongs}
             keyExtractor={(item, index) => `${item.url}_picker_${index}`}
-            contentContainerStyle={{paddingBottom: 60}}
+            contentContainerStyle={{paddingBottom: 80, paddingHorizontal: spacing.sm}}
             ListEmptyComponent={
               <View style={styles.pickerEmpty}>
                 <Text
                   style={[styles.pickerEmptyText, {color: colors.textSecondary}]}>
                   {allLocalSongs.length === 0
-                    ? 'No local songs found on device yet.'
+                    ? 'No local audio files found on device.'
                     : 'No songs matched your search.'}
                 </Text>
               </View>
             }
             renderItem={({item}) => {
-              const isAlreadyAdded = playlist.songs.some(
-                s => s.url === item.url,
-              );
+              const isAlreadyAdded = item?.url
+                ? playlist.songs.some(s => s?.url === item.url)
+                : false;
               return (
                 <View
                   style={[
                     styles.pickerItem,
-                    {borderBottomColor: colors.maximumTintColor + '22'},
+                    {
+                      borderBottomColor:
+                        colors.border || 'rgba(255,255,255,0.06)',
+                    },
                   ]}>
                   <View style={styles.pickerItemLeft}>
                     <View
                       style={[
                         styles.pickerIconWrapper,
-                        {backgroundColor: colors.maximumTintColor + '22'},
+                        {
+                          backgroundColor:
+                            colors.surfaceElevated ||
+                            colors.maximumTintColor + '22',
+                        },
                       ]}>
-                      <MaterialIcons
-                        name="music-note"
-                        size={iconSizes.sm}
+                      <Feather
+                        name="music"
+                        size={16}
                         color={colors.iconSecondary}
                       />
                     </View>
@@ -428,20 +477,20 @@ const PlaylistDetailScreen = () => {
                     <TouchableOpacity
                       style={styles.addedBadge}
                       onPress={() => removeSongFromPlaylist(playlist.id, item.url)}>
-                      <AntDesign
-                        name="checkcircle"
-                        size={iconSizes.md}
-                        color="#1DB954"
+                      <Feather
+                        name="check-circle"
+                        size={20}
+                        color={colors.primary || '#6366F1'}
                       />
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
                       style={styles.addBtnCircle}
                       onPress={() => addSongToPlaylist(playlist.id, item)}>
-                      <MaterialIcons
-                        name="add-circle-outline"
-                        size={iconSizes.md}
-                        color={colors.iconPrimary}
+                      <Feather
+                        name="plus-circle"
+                        size={20}
+                        color={colors.iconSecondary}
                       />
                     </TouchableOpacity>
                   )}
@@ -464,7 +513,10 @@ const PlaylistDetailScreen = () => {
               <View
                 style={[
                   styles.menuBox,
-                  {backgroundColor: colors.background, borderColor: colors.maximumTintColor + '44'},
+                  {
+                    backgroundColor: colors.surface || colors.card || '#111726',
+                    borderColor: colors.border || 'rgba(255,255,255,0.1)',
+                  },
                 ]}>
                 <Text
                   style={[styles.menuTitle, {color: colors.textPrimary}]}
@@ -479,9 +531,9 @@ const PlaylistDetailScreen = () => {
                     setRenameValue(playlist.name);
                     setIsRenameOpen(true);
                   }}>
-                  <MaterialIcons
-                    name="edit"
-                    size={iconSizes.md}
+                  <Feather
+                    name="edit-2"
+                    size={18}
                     color={colors.iconPrimary}
                     style={{marginRight: spacing.md}}
                   />
@@ -494,13 +546,13 @@ const PlaylistDetailScreen = () => {
                 <TouchableOpacity
                   style={styles.menuRow}
                   onPress={handleDeletePlaylist}>
-                  <MaterialIcons
-                    name="delete-outline"
-                    size={iconSizes.md}
-                    color="#FF5252"
-                    style={{marginRight: spacing.md}}
+                  <Feather
+                    name="trash-2"
+                    size={18}
+                    color="#EF4444"
+                    style={styles.deleteIcon}
                   />
-                  <Text style={[styles.menuRowText, {color: '#FF5252'}]}>
+                  <Text style={[styles.menuRowText, styles.deleteText]}>
                     Delete Playlist
                   </Text>
                 </TouchableOpacity>
@@ -510,7 +562,7 @@ const PlaylistDetailScreen = () => {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Rename Playlist Modal */}
+      {/* Rename Modal */}
       <Modal
         visible={isRenameOpen}
         transparent={true}
@@ -522,7 +574,10 @@ const PlaylistDetailScreen = () => {
               <View
                 style={[
                   styles.modalBox,
-                  {backgroundColor: colors.background, borderColor: colors.maximumTintColor + '44'},
+                  {
+                    backgroundColor: colors.surface || colors.card || '#111726',
+                    borderColor: colors.border || 'rgba(255,255,255,0.1)',
+                  },
                 ]}>
                 <Text style={[styles.dialogTitle, {color: colors.textPrimary}]}>
                   Rename Playlist
@@ -532,7 +587,8 @@ const PlaylistDetailScreen = () => {
                     styles.dialogInput,
                     {
                       color: colors.textPrimary,
-                      borderColor: colors.maximumTintColor + '55',
+                      backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '1A',
+                      borderColor: colors.border || 'rgba(255,255,255,0.1)',
                     },
                   ]}
                   value={renameValue}
@@ -554,7 +610,8 @@ const PlaylistDetailScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.dialogCreateBtn,
-                      !renameValue.trim() && {opacity: 0.5},
+                      {backgroundColor: colors.primary || '#6366F1'},
+                      !renameValue.trim() && styles.btnDisabled,
                     ]}
                     disabled={!renameValue.trim()}
                     onPress={handleRenameSubmit}>
@@ -579,6 +636,7 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
+    padding: spacing.xl,
   },
   notFoundText: {
     fontSize: fontSize.lg,
@@ -586,14 +644,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   backHomeBtn: {
-    backgroundColor: '#1DB954',
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 20,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.full,
   },
   backHomeBtnText: {
     color: '#FFFFFF',
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.bold,
   },
   header: {
@@ -604,22 +661,32 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? spacing.xl : spacing.lg,
     paddingBottom: spacing.sm,
   },
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerTitle: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
     fontFamily: fontFamilies.bold,
     flex: 1,
     textAlign: 'center',
     marginHorizontal: spacing.sm,
+    letterSpacing: -0.3,
   },
   heroContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
   heroArtwork: {
-    width: 90,
-    height: 90,
-    borderRadius: 20,
+    width: 80,
+    height: 80,
+    borderRadius: radius.xl,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
@@ -628,10 +695,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xl,
     fontFamily: fontFamilies.bold,
     textAlign: 'center',
-    marginBottom: 4,
+    letterSpacing: -0.4,
+    marginBottom: 2,
   },
   heroSubtitle: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontFamily: fontFamilies.regular,
     marginBottom: spacing.md,
   },
@@ -643,28 +711,25 @@ const styles = StyleSheet.create({
   playAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1DB954',
-    paddingVertical: spacing.sm,
+    paddingVertical: 8,
     paddingHorizontal: spacing.md,
-    borderRadius: 20,
-    gap: 4,
+    borderRadius: radius.full,
   },
   playAllBtnText: {
     color: '#FFFFFF',
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontFamily: fontFamilies.bold,
   },
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: 8,
     paddingHorizontal: spacing.md,
-    borderRadius: 20,
-    gap: 4,
+    borderRadius: radius.full,
   },
   secondaryBtnText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontFamily: fontFamilies.medium,
   },
   emptyContainer: {
@@ -683,15 +748,15 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontFamily: fontFamilies.regular,
     textAlign: 'center',
+    lineHeight: 20,
     marginBottom: spacing.lg,
   },
   emptyAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1DB954',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: 20,
+    borderRadius: radius.full,
   },
   emptyAddBtnText: {
     color: '#FFFFFF',
@@ -700,7 +765,7 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 44 : 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -712,16 +777,21 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: fontSize.xl,
     fontFamily: fontFamilies.bold,
+    letterSpacing: -0.4,
+  },
+  pickerSubtitle: {
+    fontSize: fontSize.xs,
+    fontFamily: fontFamilies.regular,
+    marginTop: 2,
   },
   pickerDoneBtn: {
-    backgroundColor: '#1DB954',
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-    borderRadius: 16,
+    paddingVertical: 7,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.full,
   },
   pickerDoneText: {
     color: '#FFFFFF',
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontFamily: fontFamilies.bold,
   },
   searchBox: {
@@ -730,13 +800,13 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: 10,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: 42,
   },
   searchInput: {
     flex: 1,
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.regular,
   },
   pickerEmpty: {
@@ -744,7 +814,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pickerEmptyText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.regular,
     textAlign: 'center',
   },
@@ -753,7 +823,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
   },
   pickerItemLeft: {
@@ -763,9 +833,9 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   pickerIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 38,
+    height: 38,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -774,29 +844,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pickerSongTitle: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.medium,
   },
   pickerSongArtist: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontFamily: fontFamilies.regular,
+    marginTop: 2,
   },
   addedBadge: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   addBtnCircle: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
   },
   modalBox: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     borderWidth: 1,
   },
@@ -807,7 +878,7 @@ const styles = StyleSheet.create({
   },
   dialogInput: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: fontSize.md,
@@ -824,23 +895,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   dialogCreateBtn: {
-    backgroundColor: '#1DB954',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: 8,
+    borderRadius: radius.md,
+  },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  iconMarginSm: {
+    marginRight: 6,
+  },
+  iconMarginXs: {
+    marginRight: 4,
   },
   dialogBtnText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.medium,
   },
   dialogCreateBtnText: {
     color: '#FFFFFF',
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.bold,
   },
   menuBox: {
     width: '85%',
-    borderRadius: 16,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     borderWidth: 1,
   },
@@ -850,15 +929,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingBottom: spacing.sm,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#ccc',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  deleteIcon: {
+    marginRight: spacing.md,
   },
   menuRowText: {
     fontSize: fontSize.md,
     fontFamily: fontFamilies.medium,
+  },
+  deleteText: {
+    color: '#EF4444',
   },
 });

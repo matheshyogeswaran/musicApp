@@ -1,15 +1,18 @@
-import {create} from 'zustand';
-import {isExist} from '../utills';
+import { create } from 'zustand';
+import { isExist } from '../utills';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const useLikeSongs = create(set => ({
+const useLikeSongs = create((set) => ({
   likedSongs: [],
-  addToLiked: newSong => {
-    set(state => {
+  addToLiked: (newSong) => {
+    if (!newSong || !newSong.url) {
+      return;
+    }
+    set((state) => {
       // Check if the song is already in the likedSongs array
-      let isAlreadyExist = isExist(state.likedSongs, newSong);
+      const isAlreadyExist = isExist(state.likedSongs, newSong);
       const updatedSongs = isAlreadyExist
-        ? state.likedSongs.filter((item)=>item.url!==newSong.url)
+        ? state.likedSongs.filter((item) => item && item.url !== newSong.url)
         : [newSong, ...state.likedSongs];
 
       AsyncStorage.setItem('likedSongs', JSON.stringify(updatedSongs));
@@ -23,9 +26,11 @@ const useLikeSongs = create(set => ({
     try {
       const likedSongs = await AsyncStorage.getItem('likedSongs');
       if (likedSongs) {
-        set({likedSongs: JSON.parse(likedSongs)});
+        set({ likedSongs: JSON.parse(likedSongs) });
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log('Error loading liked songs', error);
+    }
   },
 }));
 

@@ -1,37 +1,84 @@
 import {StyleSheet, Text, View, TouchableOpacity, Platform} from 'react-native';
 import React from 'react';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import AntDesign from 'react-native-vector-icons/AntDesign';
-// import {colors} from '../constants/colors';
-import {iconSizes, spacing} from '../constants/dimensions';
+import Feather from 'react-native-vector-icons/Feather';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {iconSizes, spacing, fontSize, radius} from '../constants/dimensions';
+import {fontFamilies} from '../constants/fonts';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import { useNavigation, useTheme } from '@react-navigation/native';
-const Header = () => {
+import {useNavigation, useTheme} from '@react-navigation/native';
+
+const Header = ({onSearchPress, isSearchActive = false, rightAction}) => {
   const {colors} = useTheme();
-
   const navigation = useNavigation();
-  const toggleDrawer =()=>{
+
+  const toggleDrawer = () => {
     navigation.toggleDrawer();
+  };
 
-
-  }
   return (
-    <SafeAreaView style={[styles.safeArea,{ backgroundColor: colors.background}]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, {backgroundColor: colors.background}]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={toggleDrawer}>
-          <FontAwesome5
-            name={'grip-lines'}
-            color={colors.iconPrimary}
-            size={iconSizes.md}
-          />
+        {/* Drawer button */}
+        <TouchableOpacity
+          style={[
+            styles.iconButton,
+            {
+              backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '22',
+              borderColor: colors.border || colors.maximumTintColor + '33',
+            },
+          ]}
+          activeOpacity={0.7}
+          onPress={toggleDrawer}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <Feather name="menu" color={colors.iconPrimary} size={iconSizes.sm} />
         </TouchableOpacity>
-        <TouchableOpacity>
-          <AntDesign
-            name={'search1'}
-            color={colors.iconPrimary}
-            size={iconSizes.md}
-          />
-        </TouchableOpacity>
+
+        {/* Brand / Logo */}
+        <View style={styles.brandContainer}>
+          <View
+            style={[
+              styles.brandIconDot,
+              {backgroundColor: colors.primary || '#6366F1'},
+            ]}>
+            <MaterialIcons name="graphic-eq" size={14} color="#FFFFFF" />
+          </View>
+          <Text style={[styles.brandText, {color: colors.textPrimary}]}>
+            Trackly
+          </Text>
+        </View>
+
+        {/* Right Action */}
+        <View style={styles.rightContainer}>
+          {rightAction ? (
+            rightAction
+          ) : onSearchPress ? (
+            <TouchableOpacity
+              style={[
+                styles.iconButton,
+                isSearchActive && {
+                  backgroundColor: colors.primary || '#6366F1',
+                  borderColor: colors.primary || '#6366F1',
+                },
+                !isSearchActive && {
+                  backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '22',
+                  borderColor: colors.border || colors.maximumTintColor + '33',
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={onSearchPress}
+              hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+              <Feather
+                name={isSearchActive ? 'x' : 'search'}
+                color={isSearchActive ? '#FFFFFF' : colors.iconPrimary}
+                size={iconSizes.sm}
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.rightPlaceholder} />
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -40,14 +87,46 @@ const Header = () => {
 export default Header;
 
 const styles = StyleSheet.create({
+  safeArea: {
+    zIndex: 10,
+  },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-   // marginTop: Platform.OS === 'ios' ? spacing.xl : 0,
-    paddingVertical: Platform.OS === 'ios' ? spacing.xm : spacing.lg,
     paddingHorizontal: spacing.lg,
+    paddingVertical: Platform.OS === 'ios' ? spacing.xs : spacing.sm,
   },
-  safeArea: {
-   
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  brandIconDot: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontSize.lg,
+    letterSpacing: -0.5,
+  },
+  rightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rightPlaceholder: {
+    width: 38,
   },
 });

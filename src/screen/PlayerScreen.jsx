@@ -1,11 +1,10 @@
 import React, {useEffect, useState} from 'react';
 import {
-  ActivityIndicator,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -14,190 +13,410 @@ import Animated, {
   withRepeat,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import FastImage from 'react-native-fast-image'; // Optimized for performance
-import AntDesign from 'react-native-vector-icons/AntDesign';
+import FastImage from 'react-native-fast-image';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import AddToPlaylistModal from '../components/AddToPlaylistModal';
-import {fontSize, iconSizes, spacing} from '../constants/dimensions';
+import {fontSize, spacing, radius} from '../constants/dimensions';
 import {fontFamilies} from '../constants/fonts';
 import PlayerShuffleToggle from '../components/PlayerShuffleToggle';
+import PlayerRepeatToggle from '../components/PlayerRepeatToggle';
 import PlayerProgressBar from '../components/PlayerProgressBar';
 import {
   GotoNextButton,
   GotoPreviousButton,
   PlayPauseButton,
 } from '../components/PlayerControls';
-import {useNavigation, useTheme} from '@react-navigation/native';
+import {useNavigation, useRoute, useTheme} from '@react-navigation/native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import TrackPlayer, {
   useActiveTrack,
-  usePlaybackState,
-  State,
+  useIsPlaying,
 } from 'react-native-track-player';
 import useLikeSongs from '../store/likeStore';
 import {isExist} from '../utills';
+import AddToPlaylistModal from '../components/AddToPlaylistModal';
 
-// Array of Random Images
-const randomImages = [
-  'https://thumbs.dreamstime.com/b/vinyl-record-disc-black-lp-album-isolated-long-play-disk-blank-orange-label-40595108.jpg',
-  'https://th.bing.com/th/id/R.a209ea09bd65cde41b7160ea5e6fd277?rik=jqvwc3pz%2fgLdKA&pid=ImgRaw&r=0',
+const albumArtworks = [
+  'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&q=80',
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80',
+  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&q=80',
+  'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=600&q=80',
 ];
 
 const PlayerScreen = () => {
   const {colors} = useTheme();
-  const {likedSongs, addToLiked} = useLikeSongs();
-  const activeTrack = useActiveTrack();
   const navigation = useNavigation();
+  const route = useRoute();
+  const insets = useSafeAreaInsets();
+  const {width, height} = useWindowDimensions();
+
+  const trackPlayerTrack = useActiveTrack();
+  const activeTrack = trackPlayerTrack || route.params?.track;
+  const {playing} = useIsPlaying();
+  const {likedSongs, addToLiked} = useLikeSongs();
+
   const [isMute, setIsMute] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
-  const playbackState = usePlaybackState(); // Get playback state
-  // Generate a random image on load
-  const [randomImage, setRandomImage] = useState(
-    randomImages[Math.floor(Math.random() * randomImages.length)],
+  const [randomImage] = useState(
+    albumArtworks[Math.floor(Math.random() * albumArtworks.length)],
   );
 
-  // Animation Values
+  // Responsive artwork sizing: proportional to screen height & width
+  const artworkSize = Math.round(Math.min(width - 64, height * 0.36, 290));
+  const vinylCenterSize = Math.round(artworkSize * 0.18);
+  const vinylDotSize = Math.round(vinylCenterSize * 0.3);
+
+  // Rotation animation for vinyl record
   const rotate = useSharedValue(0);
 
   useEffect(() => {
-    // Start infinite rotation animation
-    const startAnimation = () => {
+    if (playing) {
       rotate.value = withRepeat(
-        withTiming(360, {duration: 10000, easing: Easing.linear}), // 10s for full rotation
-        -1, // Infinite loop
+        withTiming(360, {duration: 12000, easing: Easing.linear}),
+        -1,
       );
-    };
-
-    const stopAnimation = () => {
-      rotate.value = withTiming(0, {duration: 500}); // Reset rotation when paused
-    };
-
-    // Manage animation based on playback state
-    if (playbackState.state === State.Playing) {
-      startAnimation();
     } else {
-      stopAnimation();
+      rotate.value = withTiming(0, {duration: 600});
     }
-  }, [playbackState.state, rotate]);
+  }, [playing, rotate]);
 
-  const setVolume = async () => {
-    const volume = await TrackPlayer.getVolume();
-    setIsMute(volume === 0 ? true : false);
-  };
-
-  const goBack = () => {
-    navigation.goBack();
-  };
-
-  const handleToggleVolumn = () => {
-    TrackPlayer.setVolume(isMute ? 1 : 0);
-    setIsMute(!isMute);
-  };
-
-  // Image rotation animation
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{rotate: `${rotate.value}deg`}],
     };
   });
 
-  const stopAnimation = () => {
-    rotate.value = withTiming(0, {duration: 500}); // Reset rotation when paused
+  const handleToggleVolume = async () => {
+    const nextMute = !isMute;
+    try {
+      await TrackPlayer.setVolume(nextMute ? 0 : 1);
+    } catch (e) {
+      console.log('Error setting volume', e);
+    }
+    setIsMute(nextMute);
   };
 
-  if (!activeTrack) {
+  // If no track is currently selected or playing
+  if (!activeTrack || !activeTrack.url) {
     return (
-      <View style={[styles.centered, {backgroundColor: colors.background}]}>
-        <ActivityIndicator size={'large'} color={colors.iconPrimary} />
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            paddingTop: insets.top + spacing.xs,
+            paddingBottom: Math.max(insets.bottom, 12) + spacing.xs,
+          },
+        ]}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={[
+              styles.headerBtn,
+              {
+                backgroundColor:
+                  colors.surfaceElevated || colors.maximumTintColor + '22',
+                borderColor: colors.border || 'rgba(255,255,255,0.08)',
+              },
+            ]}
+            onPress={() => navigation.goBack()}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <Feather name="chevron-down" size={22} color={colors.iconPrimary} />
+          </TouchableOpacity>
+
+          <View
+            style={[
+              styles.nowPlayingPill,
+              {
+                backgroundColor:
+                  colors.surfaceElevated || colors.maximumTintColor + '22',
+                borderColor: colors.border || 'rgba(255,255,255,0.08)',
+              },
+            ]}>
+            <Text
+              style={[
+                styles.nowPlayingText,
+                {color: colors.primary || '#6366F1'},
+              ]}>
+              NOW PLAYING
+            </Text>
+          </View>
+
+          <View style={styles.headerPlaceholder} />
+        </View>
+
+        {/* Empty state container */}
+        <View style={styles.emptyContainer}>
+          <View
+            style={[
+              styles.emptyIconCircle,
+              {
+                backgroundColor: (colors.primary || '#6366F1') + '15',
+                borderColor: (colors.primary || '#6366F1') + '30',
+              },
+            ]}>
+            <Feather
+              name="music"
+              size={36}
+              color={colors.primary || '#6366F1'}
+            />
+          </View>
+          <Text style={[styles.emptyTitle, {color: colors.textPrimary}]}>
+            No Song Playing
+          </Text>
+          <Text style={[styles.emptySub, {color: colors.textSecondary}]}>
+            Select a song from your local audio library or a playlist to start listening.
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.emptyActionBtn,
+              {backgroundColor: colors.primary || '#6366F1'},
+            ]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.8}>
+            <Text style={styles.emptyActionBtnText}>Browse Library</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footerSpacing} />
       </View>
     );
   }
 
+  const isLiked = isExist(likedSongs, activeTrack);
+  const artworkSource = activeTrack.artwork
+    ? typeof activeTrack.artwork === 'string'
+      ? {uri: activeTrack.artwork}
+      : activeTrack.artwork
+    : {uri: randomImage};
+
   return (
-    <View style={[styles.container, {backgroundColor: colors.background}]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          paddingTop: insets.top + spacing.xs,
+          paddingBottom: Math.max(insets.bottom, 12) + spacing.xs,
+        },
+      ]}>
+      {/* Top Header */}
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={goBack}>
-          <AntDesign
-            name={'arrowleft'}
-            size={iconSizes.md}
-            color={colors.iconPrimary}
-          />
+        <TouchableOpacity
+          style={[
+            styles.headerBtn,
+            {
+              backgroundColor:
+                colors.surfaceElevated || colors.maximumTintColor + '22',
+              borderColor: colors.border || 'rgba(255,255,255,0.08)',
+            },
+          ]}
+          onPress={() => navigation.goBack()}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <Feather name="chevron-down" size={22} color={colors.iconPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerText, {color: colors.textPrimary}]}>
-          Playing Now
-        </Text>
-      </View>
 
-      {/* Animated Cover Image */}
-      <View style={styles.coverImageContainer}>
-        <Animated.View style={[styles.animatedCover, animatedStyle]}>
-          <FastImage
-            source={{uri: randomImage}} // Use random image
-            style={styles.coverImage}
-            resizeMode={FastImage.resizeMode.cover}
-          />
-        </Animated.View>
-      </View>
-
-      {/* Track Title & Artist */}
-      <View style={styles.titleRowHeartContainer}>
-        <View style={styles.titleContainer}>
+        <View
+          style={[
+            styles.nowPlayingPill,
+            {
+              backgroundColor:
+                colors.surfaceElevated || colors.maximumTintColor + '22',
+              borderColor: colors.border || 'rgba(255,255,255,0.08)',
+            },
+          ]}>
           <Text
-            style={[styles.title, {color: colors.textPrimary}]}
-            numberOfLines={1} // Limits to one line
-            ellipsizeMode="tail" // Adds "..." when text overflows
-          >
-            {activeTrack?.title}
-          </Text>
-
-          <Text style={[styles.artist, {color: colors.textSecondary}]}>
-            {activeTrack?.artist || 'Unknown Artist'}
+            style={[
+              styles.nowPlayingText,
+              {color: colors.primary || '#6366F1'},
+            ]}>
+            NOW PLAYING
           </Text>
         </View>
-        <View style={styles.actionButtonsContainer}>
+
+        <TouchableOpacity
+          style={[
+            styles.headerBtn,
+            {
+              backgroundColor:
+                colors.surfaceElevated || colors.maximumTintColor + '22',
+              borderColor: colors.border || 'rgba(255,255,255,0.08)',
+            },
+          ]}
+          onPress={() => setIsPlaylistModalOpen(true)}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <Feather name="plus" size={18} color={colors.iconPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Album Artwork with Vinyl Rotation */}
+      <View style={styles.artworkSection}>
+        <View
+          style={[
+            styles.artworkShadowCard,
+            {
+              width: artworkSize,
+              height: artworkSize,
+              borderRadius: artworkSize / 2,
+              shadowColor: colors.primary || '#6366F1',
+              backgroundColor: colors.surface || colors.card || '#111726',
+            },
+          ]}>
+          <Animated.View
+            style={[
+              styles.animatedCover,
+              {
+                width: artworkSize,
+                height: artworkSize,
+                borderRadius: artworkSize / 2,
+              },
+              animatedStyle,
+            ]}>
+            <FastImage
+              source={artworkSource}
+              style={{width: artworkSize, height: artworkSize}}
+              resizeMode={FastImage.resizeMode.cover}
+            />
+            {/* Center Vinyl Spindle Hole */}
+            <View
+              style={[
+                styles.vinylCenterHole,
+                {
+                  width: vinylCenterSize,
+                  height: vinylCenterSize,
+                  borderRadius: vinylCenterSize / 2,
+                },
+              ]}>
+              <View
+                style={[
+                  styles.vinylInnerDot,
+                  {
+                    width: vinylDotSize,
+                    height: vinylDotSize,
+                    borderRadius: vinylDotSize / 2,
+                    backgroundColor: colors.primary || '#6366F1',
+                  },
+                ]}
+              />
+            </View>
+          </Animated.View>
+        </View>
+      </View>
+
+      {/* Song Details & Actions */}
+      <View style={styles.metaSection}>
+        <View style={styles.titleColumn}>
+          <Text
+            style={[styles.trackTitle, {color: colors.textPrimary}]}
+            numberOfLines={1}
+            ellipsizeMode="tail">
+            {activeTrack.title || 'Unknown Title'}
+          </Text>
+          <Text
+            style={[styles.trackArtist, {color: colors.textSecondary}]}
+            numberOfLines={1}
+            ellipsizeMode="tail">
+            {activeTrack.artist && activeTrack.artist !== 'Unknown Artist'
+              ? activeTrack.artist
+              : 'Local Audio'}
+          </Text>
+        </View>
+
+        <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={{marginRight: spacing.md}}
-            onPress={() => setIsPlaylistModalOpen(true)}>
+            style={[
+              styles.actionIconBtn,
+              {
+                backgroundColor:
+                  colors.surfaceElevated || colors.maximumTintColor + '22',
+                borderColor: colors.border || 'rgba(255,255,255,0.08)',
+              },
+            ]}
+            onPress={() => setIsPlaylistModalOpen(true)}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
             <MaterialIcons
               name="playlist-add"
-              color={colors.iconSecondary}
-              size={iconSizes.lg}
+              color={colors.iconPrimary}
+              size={22}
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => addToLiked(activeTrack)}>
-            <AntDesign
-              name={isExist(likedSongs, activeTrack) ? 'heart' : 'hearto'}
-              color={colors.iconSecondary}
-              size={iconSizes.md}
+
+          <TouchableOpacity
+            style={[
+              styles.actionIconBtn,
+              {
+                backgroundColor: isLiked
+                  ? '#EF44441A'
+                  : colors.surfaceElevated || colors.maximumTintColor + '22',
+                borderColor: isLiked
+                  ? '#EF444455'
+                  : colors.border || 'rgba(255,255,255,0.08)',
+              },
+            ]}
+            onPress={() => addToLiked(activeTrack)}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Feather
+              name="heart"
+              color={isLiked ? '#EF4444' : colors.iconSecondary}
+              size={20}
+              style={isLiked ? styles.heartFilled : undefined}
             />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Player Controls */}
-      <View style={styles.playerControlContainer}>
+      {/* Scrubbable Progress Bar */}
+      <View style={styles.progressSection}>
+        <PlayerProgressBar />
+      </View>
+
+      {/* Main Playback Controls */}
+      <View style={styles.controlsRow}>
+        <PlayerShuffleToggle size={22} />
+        <GotoPreviousButton size={26} />
+        <PlayPauseButton size={64} />
+        <GotoNextButton size={26} />
+        <PlayerRepeatToggle size={22} />
+      </View>
+
+      {/* Bottom Utility Row */}
+      <View style={styles.footerRow}>
         <TouchableOpacity
-          style={styles.volumnWrapper}
-          onPress={handleToggleVolumn}>
+          style={styles.volumeToggle}
+          onPress={handleToggleVolume}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
           <Feather
-            name={isMute ? 'volume-x' : 'volume-1'}
-            size={iconSizes.md}
-            color={colors.iconPrimary}
+            name={isMute ? 'volume-x' : 'volume-2'}
+            size={18}
+            color={isMute ? '#EF4444' : colors.iconSecondary}
           />
+          <Text
+            style={[
+              styles.volumeText,
+              {color: isMute ? '#EF4444' : colors.textSecondary},
+            ]}>
+            {isMute ? 'Muted' : 'Volume'}
+          </Text>
         </TouchableOpacity>
-        <View style={styles.repeatWrapper}>
-          <PlayerShuffleToggle />
+
+        <View style={styles.deviceIndicator}>
+          <Feather
+            name="speaker"
+            size={14}
+            color={colors.primary || '#6366F1'}
+            style={styles.speakerIcon}
+          />
+          <Text
+            style={[
+              styles.deviceText,
+              {color: colors.primary || '#6366F1'},
+            ]}>
+            Device Speaker
+          </Text>
         </View>
       </View>
 
-      <PlayerProgressBar />
-
-      <View style={styles.playPauseContainer}>
-        <GotoPreviousButton size={iconSizes.xl} />
-        <PlayPauseButton size={iconSizes.xl} />
-        <GotoNextButton size={iconSizes.xl} />
-      </View>
-
+      {/* Add To Playlist Modal */}
       <AddToPlaylistModal
         visible={isPlaylistModalOpen}
         onClose={() => setIsPlaylistModalOpen(false)}
@@ -212,79 +431,181 @@ export default PlayerScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: spacing.lg,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'space-between',
   },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Platform.OS === 'ios' ? spacing.xl : 0,
-    width: '100%',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
   },
-  headerText: {
-    textAlign: 'center',
-    fontSize: fontSize.lg,
-    fontStyle: fontFamilies.medium,
-    flex: 1,
-  },
-  coverImageContainer: {
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: spacing.lg,
+  },
+  headerPlaceholder: {
+    width: 38,
+  },
+  nowPlayingPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: 1,
+  },
+  nowPlayingText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 10,
+    letterSpacing: 1.5,
+  },
+  artworkSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: spacing.xs,
+  },
+  artworkShadowCard: {
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   animatedCover: {
-    borderRadius: 150,
     borderWidth: 5,
-    borderColor: '#FFD700', // Golden border
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  coverImage: {
-    height: 300,
-    width: 300,
-    borderRadius: 150,
+  vinylCenterHole: {
+    position: 'absolute',
+    backgroundColor: '#090D16',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  title: {
+  vinylInnerDot: {},
+  metaSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+  },
+  titleColumn: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+    overflow: 'hidden',
+    paddingRight: spacing.md,
+  },
+  trackTitle: {
     fontSize: fontSize.xl,
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.bold,
+    letterSpacing: -0.4,
+    marginBottom: 4,
   },
-  artist: {
-    fontSize: fontSize.md,
+  trackArtist: {
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.regular,
   },
-  titleContainer: {
-    flex: 1,
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 0,
+  },
+  actionIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  titleRowHeartContainer: {
+  heartFilled: {
+    color: '#EF4444',
+  },
+  progressSection: {
+    paddingHorizontal: spacing.xs,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.xs,
+  },
+  volumeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  volumeText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontSize.xs,
+  },
+  deviceIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  speakerIcon: {
+    marginRight: 4,
   },
-  playerControlContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.lg,
+  deviceText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontSize.xs,
   },
-  volumnWrapper: {
+  emptyContainer: {
     flex: 1,
-  },
-  repeatWrapper: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  playPauseContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.xl,
-    marginTop: spacing.lg,
-  },
-  centered: {
-    flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: fontSize.xl,
+    fontFamily: fontFamilies.bold,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: fontSize.sm,
+    fontFamily: fontFamilies.regular,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: spacing.xl,
+  },
+  emptyActionBtn: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.full,
+  },
+  emptyActionBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fontFamilies.bold,
+    fontSize: fontSize.sm,
+  },
+  footerSpacing: {
+    height: 40,
   },
 });

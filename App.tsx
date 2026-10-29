@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
+import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DrawerNavigation from './src/navigation/DrawerNavigation';
 import { useSetupPlayer } from './src/hooks/useSetupTrackPlayer';
 import useLikeSongs from './src/store/likeStore';
@@ -21,16 +23,24 @@ const App = () => {
   }, []);
 
   const onLoad = () => {
-    console.log('track player ready');
+    console.log('Track player initialized');
   };
 
   useSetupPlayer({ onLoad });
 
+  const activeTheme = isDarkMode ? darkTheme : lightTheme;
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer theme={isDarkMode ? darkTheme : lightTheme}>
-        <DrawerNavigation />
-      </NavigationContainer>
+      <SafeAreaProvider>
+        <StatusBar
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+          backgroundColor={activeTheme.colors.background}
+        />
+        <NavigationContainer theme={activeTheme}>
+          <DrawerNavigation />
+        </NavigationContainer>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 };

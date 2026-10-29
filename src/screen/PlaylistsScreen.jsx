@@ -12,10 +12,11 @@ import {
   View,
 } from 'react-native';
 import {useNavigation, useTheme} from '@react-navigation/native';
-import AntDesign from 'react-native-vector-icons/AntDesign';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useActiveTrack} from 'react-native-track-player';
-import {fontSize, iconSizes, spacing} from '../constants/dimensions';
+import {fontSize, spacing, radius} from '../constants/dimensions';
 import {fontFamilies} from '../constants/fonts';
 import usePlaylistStore from '../store/playlistStore';
 import FloatingPlayer from '../components/FloatingPlayer';
@@ -23,19 +24,15 @@ import FloatingPlayer from '../components/FloatingPlayer';
 const PlaylistsScreen = () => {
   const {colors} = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const activeTrack = useActiveTrack();
   const {playlists, createPlaylist, renamePlaylist, deletePlaylist} =
     usePlaylistStore();
 
-  // Create Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createName, setCreateName] = useState('');
-
-  // Rename Modal state
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameValue, setRenameValue] = useState('');
-
-  // Action Menu state (3-dots modal)
   const [selectedPlaylistForMenu, setSelectedPlaylistForMenu] = useState(null);
 
   const handleCreateSubmit = async () => {
@@ -67,7 +64,7 @@ const PlaylistsScreen = () => {
   const handleDeleteConfirm = playlist => {
     Alert.alert(
       'Delete Playlist',
-      `Are you sure you want to delete "${playlist.name}"?`,
+      `Are you sure you want to delete "${playlist.name}"? This action cannot be undone.`,
       [
         {text: 'Cancel', style: 'cancel'},
         {
@@ -92,64 +89,79 @@ const PlaylistsScreen = () => {
 
   return (
     <View style={[styles.container, {backgroundColor: colors.background}]}>
-      {/* Header */}
+      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity
+          style={[
+            styles.headerBtn,
+            {
+              backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '22',
+              borderColor: colors.border || 'rgba(255,255,255,0.08)',
+            },
+          ]}
           onPress={() => navigation.goBack()}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <AntDesign
-            name="arrowleft"
-            size={iconSizes.md}
-            color={colors.iconPrimary}
-          />
+          <Feather name="arrow-left" size={20} color={colors.iconPrimary} />
         </TouchableOpacity>
+
         <Text style={[styles.headerTitle, {color: colors.textPrimary}]}>
           Playlists
         </Text>
+
         <TouchableOpacity
-          style={[styles.createPill, {backgroundColor: '#1DB954'}]}
+          style={[
+            styles.createPill,
+            {backgroundColor: colors.primary || '#6366F1'},
+          ]}
+          activeOpacity={0.8}
           onPress={() => setIsCreateModalOpen(true)}>
-          <AntDesign name="plus" size={iconSizes.sm} color="#FFFFFF" />
+          <Feather name="plus" size={16} color="#FFFFFF" />
           <Text style={styles.createPillText}>New</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Sub-header info */}
+      {/* Subtitle / Counter */}
       <View style={styles.subHeader}>
         <Text style={[styles.statsText, {color: colors.textSecondary}]}>
-          {playlists.length} {playlists.length === 1 ? 'Playlist' : 'Playlists'}
+          {playlists.length} {playlists.length === 1 ? 'playlist' : 'playlists'} in library
         </Text>
       </View>
 
-      {/* List or Empty State */}
+      {/* Empty State or List */}
       {playlists.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View
             style={[
               styles.emptyIconCircle,
-              {backgroundColor: colors.maximumTintColor + '22'},
+              {
+                backgroundColor: (colors.primary || '#6366F1') + '15',
+                borderColor: (colors.primary || '#6366F1') + '33',
+              },
             ]}>
             <MaterialIcons
               name="queue-music"
-              size={64}
-              color={colors.iconSecondary}
+              size={56}
+              color={colors.primary || '#6366F1'}
             />
           </View>
           <Text style={[styles.emptyTitle, {color: colors.textPrimary}]}>
             No Playlists Yet
           </Text>
           <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
-            Create custom playlists to organize your favorite songs and listen to
-            them anytime.
+            Create your first playlist to organize and enjoy your favorite tracks.
           </Text>
           <TouchableOpacity
-            style={styles.emptyButton}
+            style={[
+              styles.emptyButton,
+              {backgroundColor: colors.primary || '#6366F1'},
+            ]}
+            activeOpacity={0.85}
             onPress={() => setIsCreateModalOpen(true)}>
-            <AntDesign
+            <Feather
               name="plus"
-              size={iconSizes.sm}
+              size={18}
               color="#FFFFFF"
-              style={{marginRight: spacing.sm}}
+              style={{marginRight: spacing.xs}}
             />
             <Text style={styles.emptyButtonText}>Create Playlist</Text>
           </TouchableOpacity>
@@ -158,12 +170,18 @@ const PlaylistsScreen = () => {
         <FlatList
           data={playlists}
           keyExtractor={item => item.id}
-          contentContainerStyle={{paddingBottom: 120, paddingHorizontal: spacing.lg}}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: activeTrack ? insets.bottom + 110 : insets.bottom + 40,
+          }}
           renderItem={({item}) => (
             <TouchableOpacity
               style={[
                 styles.playlistCard,
-                {borderBottomColor: colors.maximumTintColor + '22'},
+                {
+                  backgroundColor: colors.surface || colors.card || '#111726',
+                  borderColor: colors.border || 'rgba(255,255,255,0.08)',
+                },
               ]}
               activeOpacity={0.7}
               onPress={() =>
@@ -174,12 +192,14 @@ const PlaylistsScreen = () => {
               <View
                 style={[
                   styles.cardIconBox,
-                  {backgroundColor: colors.maximumTintColor + '22'},
+                  {
+                    backgroundColor: (colors.primary || '#6366F1') + '1A',
+                  },
                 ]}>
                 <MaterialIcons
                   name="library-music"
-                  size={iconSizes.lg}
-                  color={colors.iconPrimary}
+                  size={24}
+                  color={colors.primary || '#6366F1'}
                 />
               </View>
 
@@ -195,7 +215,7 @@ const PlaylistsScreen = () => {
                     {color: colors.textSecondary},
                   ]}>
                   {item.songs.length}{' '}
-                  {item.songs.length === 1 ? 'song' : 'songs'}
+                  {item.songs.length === 1 ? 'track' : 'tracks'}
                 </Text>
               </View>
 
@@ -203,9 +223,9 @@ const PlaylistsScreen = () => {
                 style={styles.cardOptionsBtn}
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 onPress={() => setSelectedPlaylistForMenu(item)}>
-                <MaterialIcons
-                  name="more-vert"
-                  size={iconSizes.md}
+                <Feather
+                  name="more-vertical"
+                  size={18}
                   color={colors.iconSecondary}
                 />
               </TouchableOpacity>
@@ -214,10 +234,10 @@ const PlaylistsScreen = () => {
         />
       )}
 
-      {/* Floating Player */}
+      {/* Floating Mini Player */}
       {activeTrack && <FloatingPlayer />}
 
-      {/* Create Playlist Modal */}
+      {/* Create Modal */}
       <Modal
         visible={isCreateModalOpen}
         transparent={true}
@@ -229,7 +249,10 @@ const PlaylistsScreen = () => {
               <View
                 style={[
                   styles.modalBox,
-                  {backgroundColor: colors.background, borderColor: colors.maximumTintColor + '44'},
+                  {
+                    backgroundColor: colors.surface || colors.card || '#111726',
+                    borderColor: colors.border || 'rgba(255,255,255,0.1)',
+                  },
                 ]}>
                 <Text style={[styles.dialogTitle, {color: colors.textPrimary}]}>
                   New Playlist
@@ -239,10 +262,11 @@ const PlaylistsScreen = () => {
                     styles.dialogInput,
                     {
                       color: colors.textPrimary,
-                      borderColor: colors.maximumTintColor + '55',
+                      backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '1A',
+                      borderColor: colors.border || 'rgba(255,255,255,0.1)',
                     },
                   ]}
-                  placeholder="Give your playlist a name"
+                  placeholder="Playlist name"
                   placeholderTextColor={colors.textSecondary}
                   value={createName}
                   onChangeText={setCreateName}
@@ -266,7 +290,8 @@ const PlaylistsScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.dialogCreateBtn,
-                      !createName.trim() && {opacity: 0.5},
+                      {backgroundColor: colors.primary || '#6366F1'},
+                      !createName.trim() && styles.dialogBtnDisabled,
                     ]}
                     disabled={!createName.trim()}
                     onPress={handleCreateSubmit}>
@@ -279,7 +304,7 @@ const PlaylistsScreen = () => {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Rename Playlist Modal */}
+      {/* Rename Modal */}
       <Modal
         visible={renameTarget !== null}
         transparent={true}
@@ -291,7 +316,10 @@ const PlaylistsScreen = () => {
               <View
                 style={[
                   styles.modalBox,
-                  {backgroundColor: colors.background, borderColor: colors.maximumTintColor + '44'},
+                  {
+                    backgroundColor: colors.surface || colors.card || '#111726',
+                    borderColor: colors.border || 'rgba(255,255,255,0.1)',
+                  },
                 ]}>
                 <Text style={[styles.dialogTitle, {color: colors.textPrimary}]}>
                   Rename Playlist
@@ -301,7 +329,8 @@ const PlaylistsScreen = () => {
                     styles.dialogInput,
                     {
                       color: colors.textPrimary,
-                      borderColor: colors.maximumTintColor + '55',
+                      backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '1A',
+                      borderColor: colors.border || 'rgba(255,255,255,0.1)',
                     },
                   ]}
                   placeholder="Enter playlist name"
@@ -325,7 +354,8 @@ const PlaylistsScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.dialogCreateBtn,
-                      !renameValue.trim() && {opacity: 0.5},
+                      {backgroundColor: colors.primary || '#6366F1'},
+                      !renameValue.trim() && styles.dialogBtnDisabled,
                     ]}
                     disabled={!renameValue.trim()}
                     onPress={handleRenameSubmit}>
@@ -338,7 +368,7 @@ const PlaylistsScreen = () => {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Options Menu Modal (3 dots) */}
+      {/* 3-Dots Menu Modal */}
       <Modal
         visible={selectedPlaylistForMenu !== null}
         transparent={true}
@@ -351,7 +381,10 @@ const PlaylistsScreen = () => {
               <View
                 style={[
                   styles.menuBox,
-                  {backgroundColor: colors.background, borderColor: colors.maximumTintColor + '44'},
+                  {
+                    backgroundColor: colors.surface || colors.card || '#111726',
+                    borderColor: colors.border || 'rgba(255,255,255,0.1)',
+                  },
                 ]}>
                 <Text
                   style={[styles.menuTitle, {color: colors.textPrimary}]}
@@ -362,9 +395,9 @@ const PlaylistsScreen = () => {
                 <TouchableOpacity
                   style={styles.menuRow}
                   onPress={() => openRenameModal(selectedPlaylistForMenu)}>
-                  <MaterialIcons
-                    name="edit"
-                    size={iconSizes.md}
+                  <Feather
+                    name="edit-2"
+                    size={18}
                     color={colors.iconPrimary}
                     style={{marginRight: spacing.md}}
                   />
@@ -377,13 +410,13 @@ const PlaylistsScreen = () => {
                 <TouchableOpacity
                   style={styles.menuRow}
                   onPress={() => openDeletePrompt(selectedPlaylistForMenu)}>
-                  <MaterialIcons
-                    name="delete-outline"
-                    size={iconSizes.md}
-                    color="#FF5252"
-                    style={{marginRight: spacing.md}}
+                  <Feather
+                    name="trash-2"
+                    size={18}
+                    color="#EF4444"
+                    style={styles.deleteIcon}
                   />
-                  <Text style={[styles.menuRowText, {color: '#FF5252'}]}>
+                  <Text style={[styles.menuRowText, styles.deleteText]}>
                     Delete Playlist
                   </Text>
                 </TouchableOpacity>
@@ -410,21 +443,30 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? spacing.xl : spacing.lg,
     paddingBottom: spacing.sm,
   },
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerTitle: {
     fontSize: fontSize.xl,
     fontFamily: fontFamilies.bold,
+    letterSpacing: -0.4,
   },
   createPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xm,
-    borderRadius: 20,
+    paddingVertical: 7,
+    borderRadius: radius.full,
     gap: 4,
   },
   createPillText: {
     color: '#FFFFFF',
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontFamily: fontFamilies.bold,
   },
   subHeader: {
@@ -432,19 +474,21 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   statsText: {
-    fontSize: fontSize.sm,
-    fontFamily: fontFamilies.medium,
+    fontSize: fontSize.xs,
+    fontFamily: fontFamilies.regular,
   },
   playlistCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
   },
   cardIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -454,15 +498,15 @@ const styles = StyleSheet.create({
   },
   playlistCardName: {
     fontSize: fontSize.md,
-    fontFamily: fontFamilies.medium,
-    marginBottom: 4,
+    fontFamily: fontFamilies.semiBold,
+    marginBottom: 3,
   },
   playlistCardMeta: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontFamily: fontFamilies.regular,
   },
   cardOptionsBtn: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   emptyContainer: {
     flex: 1,
@@ -472,9 +516,10 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   emptyIconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
@@ -482,38 +527,37 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: fontSize.xl,
     fontFamily: fontFamilies.bold,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.regular,
     textAlign: 'center',
     marginBottom: spacing.xl,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1DB954',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    borderRadius: 25,
+    borderRadius: radius.full,
   },
   emptyButtonText: {
     color: '#FFFFFF',
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.bold,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
   },
   modalBox: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     borderWidth: 1,
   },
@@ -524,7 +568,7 @@ const styles = StyleSheet.create({
   },
   dialogInput: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: fontSize.md,
@@ -541,23 +585,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   dialogCreateBtn: {
-    backgroundColor: '#1DB954',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: 8,
+    borderRadius: radius.md,
+  },
+  dialogBtnDisabled: {
+    opacity: 0.5,
   },
   dialogBtnText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.medium,
   },
   dialogCreateBtnText: {
     color: '#FFFFFF',
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontFamily: fontFamilies.bold,
   },
   menuBox: {
     width: '85%',
-    borderRadius: 16,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     borderWidth: 1,
   },
@@ -567,15 +613,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingBottom: spacing.sm,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#ccc',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  deleteIcon: {
+    marginRight: spacing.md,
   },
   menuRowText: {
     fontSize: fontSize.md,
     fontFamily: fontFamilies.medium,
+  },
+  deleteText: {
+    color: '#EF4444',
   },
 });
