@@ -104,6 +104,10 @@ const FloatingPlayer = () => {
     navigation.navigate('PLAYER_SCREEN', {track: activeTrack}); // Pass active track
   };
 
+  if (!activeTrack) {
+    return null;
+  }
+
   return (
     <View>
       {/* Slider for Progress */}

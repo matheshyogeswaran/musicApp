@@ -14,15 +14,17 @@ import {fontSize, iconSizes, spacing} from '../constants/dimensions';
 import {fontFamilies} from '../constants/fonts';
 import SongCard from '../components/SongCard';
 import FloatingPlayer from '../components/FloatingPlayer';
+import AddToPlaylistModal from '../components/AddToPlaylistModal';
 import useLikeSongs from '../store/likeStore';
 import {useNavigation, useTheme} from '@react-navigation/native';
-import TrackPlayer from 'react-native-track-player';
+import TrackPlayer, {useActiveTrack} from 'react-native-track-player';
 
 const LikeScreen = () => {
   const {colors} = useTheme();
   const navigation = useNavigation();
-  const {likedSongs, addToLiked} = useLikeSongs();
-  const [currentTrack, setCurrentTrack] = useState(null);
+  const activeTrack = useActiveTrack();
+  const {likedSongs} = useLikeSongs();
+  const [selectedSongForPlaylist, setSelectedSongForPlaylist] = useState(null);
 
   const handleGoBack = () => {
     navigation.goBack();
@@ -30,7 +32,6 @@ const LikeScreen = () => {
   const handlePlayTrack = async (selectedTrack, songs = likedSongs) => {
     //const songs = item.songs;
     console.log('seleted song-------', selectedTrack);
-    setCurrentTrack(selectedTrack);
     //make a queue and play songs
     const trackIndex = songs.findIndex(
       track => track.url === selectedTrack.url,
@@ -80,26 +81,23 @@ const LikeScreen = () => {
         data={likedSongs}
         renderItem={({item}) => (
           <SongCard
-            containerStyle={{width: '46%'}}
-            imageStyle={{
-              height: 160,
-              width: 160,
-            }}
             item={item}
-            handlePlay={item => handlePlayTrack(item)}
+            handlePlay={selectedTrack => handlePlayTrack(selectedTrack)}
+            onOptionsPress={track => setSelectedSongForPlaylist(track)}
           />
         )}
-         numColumns={1}
+        numColumns={1}
         contentContainerStyle={{
-          paddingBottom: 400,
-          paddingHorizontal: 20,
+          paddingBottom: 120,
         }}
-        // columnWrapperStyle={{
-        //   justifyContent: 'space-between',
-        //   marginVertical: spacing.lg,
-        // }}
       />
-      {currentTrack && <FloatingPlayer track={currentTrack} />}
+      {activeTrack && <FloatingPlayer />}
+
+      <AddToPlaylistModal
+        visible={selectedSongForPlaylist !== null}
+        onClose={() => setSelectedSongForPlaylist(null)}
+        song={selectedSongForPlaylist}
+      />
     </View>
   );
 };

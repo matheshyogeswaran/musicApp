@@ -9,17 +9,24 @@ import {
   Platform,
 } from 'react-native';
 import RNFS from 'react-native-fs';
-import TrackPlayer from 'react-native-track-player';
+import TrackPlayer, {useActiveTrack} from 'react-native-track-player';
 import SongCard from '../components/SongCard';
 import FloatingPlayer from '../components/FloatingPlayer';
-import {useTheme} from '@react-navigation/native';
+import AddToPlaylistModal from '../components/AddToPlaylistModal';
+import {useNavigation, useTheme} from '@react-navigation/native';
 import Header from '../components/Header';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {iconSizes, spacing, fontSize} from '../constants/dimensions';
+import {fontFamilies} from '../constants/fonts';
+import useSongStore from '../store/songStore';
+
 const HomeScreen = () => {
   const {colors} = useTheme();
+  const navigation = useNavigation();
+  const activeTrack = useActiveTrack();
   const [localSongs, setLocalSongs] = useState([]);
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // Loading state
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedSongForPlaylist, setSelectedSongForPlaylist] = useState(null);
 
   // Request storage permissions
   const requestPermission = async () => {
@@ -65,17 +72,17 @@ const HomeScreen = () => {
           // Recursively scan subdirectories
           await scanDirectories(item.path, audioFiles);
         } else if (
-          item.name.endsWith('.mp3') || // Supported formats
+          item.name.endsWith('.mp3') ||
           item.name.endsWith('.wav') ||
           item.name.endsWith('.m4a') ||
           item.name.endsWith('.flac')
         ) {
           // Add audio file
           audioFiles.push({
-            url: 'file://' + item.path, // Local file URI
-            title: item.name.replace(/\.[^/.]+$/, ''), // Remove file extension
-            artist: 'Unknown Artist', // Default artist
-            artwork: 'https://via.placeholder.com/150', // Default artwork
+            url: 'file://' + item.path,
+            title: item.name.replace(/\.[^/.]+$/, ''),
+            artist: 'Unknown Artist',
+            artwork: 'https://via.placeholder.com/150',
           });
         }
       }
@@ -86,7 +93,7 @@ const HomeScreen = () => {
     }
   };
 
-  // Scan all songs from the root storage
+  // Scan all songs from root storage
   const loadAllSongs = async () => {
     try {
       setIsLoading(true);
@@ -97,28 +104,30 @@ const HomeScreen = () => {
       }
 
       const basePaths = [
-        RNFS.DownloadDirectoryPath, // Downloads folder
-        RNFS.DocumentDirectoryPath, // App-specific files
-        RNFS.ExternalStorageDirectoryPath + '/Music', // Music folder
-        RNFS.ExternalStorageDirectoryPath, // Root directory (External Storage)
+        RNFS.DownloadDirectoryPath,
+        RNFS.DocumentDirectoryPath,
+        RNFS.ExternalStorageDirectoryPath + '/Music',
+        RNFS.ExternalStorageDirectoryPath,
       ];
 
       let allAudioFiles = [];
 
       for (const path of basePaths) {
         const audioFiles = await scanDirectories(path);
-        allAudioFiles = [...allAudioFiles, ...audioFiles]; // Merge songs from all folders
+        allAudioFiles = [...allAudioFiles, ...audioFiles];
       }
 
-      // **Remove duplicate songs based on 'url'**
+      // Remove duplicate songs based on 'url'
       const uniqueSongs = allAudioFiles.filter(
         (song, index, self) =>
-          index === self.findIndex(s => s.url === song.url), // Compare by 'url'
+          index === self.findIndex(s => s.url === song.url),
       );
 
-      setLocalSongs(uniqueSongs); // Update state with unique songs
-      await TrackPlayer.reset(); // Clear existing track queue
-      await TrackPlayer.add(uniqueSongs); // Add only unique songs to the player
+      setLocalSongs(uniqueSongs);
+      useSongStore.getState().setSongs(uniqueSongs);
+
+      await TrackPlayer.reset();
+      await TrackPlayer.add(uniqueSongs);
     } catch (err) {
       console.warn('Error loading songs:', err);
     } finally {
@@ -130,37 +139,63 @@ const HomeScreen = () => {
   const handlePlayTrack = async track => {
     const index = localSongs.findIndex(song => song.url === track.url);
 
-    await TrackPlayer.reset(); // Clear the previous queue
-    await TrackPlayer.add(localSongs); // Add all songs to the queue
-    await TrackPlayer.skip(index); // Start playing the selected track
-    await TrackPlayer.play(); // Play the track
-    setCurrentTrack(track);
+    await TrackPlayer.reset();
+    await TrackPlayer.add(localSongs);
+    await TrackPlayer.skip(index);
+    await TrackPlayer.play();
   };
 
   useEffect(() => {
-    loadAllSongs(); // Load songs on initial render
+    loadAllSongs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <View style={[styles.container, {backgroundColor: colors.background}]}>
       <Header />
+
       <View style={styles.headerContainer}>
-        {/* Left Side: Title */}
-        <Text style={[styles.headerTitle, {color: colors.textPrimary}]}>
-          All Songs
-        </Text>
+        {/* Left Side: Title and Playlists shortcut */}
+        <View style={styles.headerLeftRow}>
+          <Text style={[styles.headerTitle, {color: colors.textPrimary}]}>
+            All Songs
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.playlistShortcutBtn,
+              {
+                borderColor: colors.maximumTintColor + '44',
+                backgroundColor: colors.maximumTintColor + '15',
+              },
+            ]}
+            onPress={() => navigation.navigate('PLAYLISTS_SCREEN')}>
+            <MaterialIcons
+              name="queue-music"
+              size={iconSizes.sm}
+              color={colors.iconPrimary}
+              style={{marginRight: 4}}
+            />
+            <Text
+              style={[
+                styles.playlistShortcutText,
+                {color: colors.textPrimary},
+              ]}>
+              Playlists
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity onPress={loadAllSongs} disabled={isLoading}>
           {isLoading ? (
             <MaterialIcons
-              name="hourglass-empty" // Loading icon
-              size={28}
+              name="hourglass-empty"
+              size={26}
               color={colors.textPrimary}
             />
           ) : (
             <MaterialIcons
-              name="refresh" // Refresh icon
-              size={28}
+              name="refresh"
+              size={26}
               color={colors.textPrimary}
             />
           )}
@@ -174,13 +209,22 @@ const HomeScreen = () => {
           <SongCard
             item={item}
             handlePlay={selectedTrack => handlePlayTrack(selectedTrack)}
+            onOptionsPress={track => setSelectedSongForPlaylist(track)}
           />
         )}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item, index) => `${item.url}_${index}`}
         contentContainerStyle={{paddingBottom: 100}}
       />
 
-      {currentTrack && <FloatingPlayer track={currentTrack} />}
+      {/* Floating Player */}
+      {activeTrack && <FloatingPlayer />}
+
+      {/* Add To Playlist Modal */}
+      <AddToPlaylistModal
+        visible={selectedSongForPlaylist !== null}
+        onClose={() => setSelectedSongForPlaylist(null)}
+        song={selectedSongForPlaylist}
+      />
     </View>
   );
 };
@@ -191,26 +235,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  addButton: {
-    padding: 16,
-    backgroundColor: '#1DB954',
-    margin: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  addText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   headerContainer: {
-    flexDirection: 'row', // Horizontal layout
-    alignItems: 'center', // Center vertically
-    justifyContent: 'space-between', // Space between left and right items
-    padding: 16, // Padding for spacing
-    marginTop: Platform.OS === 'ios' ? 50 : 20, // Handle status bar space
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  headerLeftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   headerTitle: {
-    fontSize: 20, // Title font size
-    fontWeight: 'bold', // Bold text
+    fontSize: fontSize.xl,
+    fontFamily: fontFamilies.bold,
+  },
+  playlistShortcutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xm,
+  },
+  playlistShortcutText: {
+    fontSize: fontSize.sm,
+    fontFamily: fontFamilies.medium,
   },
 });

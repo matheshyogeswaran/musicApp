@@ -10,6 +10,7 @@ import {fontSize, iconSizes, spacing} from '../constants/dimensions';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Octicons from 'react-native-vector-icons/Octicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {fontFamilies} from '../constants/fonts';
 import {useTheme} from '@react-navigation/native';
 import {useThemeStore} from '../store/themeStore';
@@ -53,6 +54,23 @@ const CustomDrawerContent = props => {
           )}
           labelStyle={[styles.labelStyle, {color: colors.textPrimary}]}
           style={styles.drawerItem}
+        />
+        <DrawerItem
+          label={'Playlists'}
+          icon={() => (
+            <MaterialIcons
+              name={'queue-music'}
+              color={colors.iconSecondary}
+              size={iconSizes.md}
+            />
+          )}
+          labelStyle={[styles.labelStyle, {color: colors.textPrimary}]}
+          style={styles.drawerItem}
+          onPress={() => {
+            props.navigation.navigate('DRAWER_HOME', {
+              screen: 'PLAYLISTS_SCREEN',
+            });
+          }}
         />
         <DrawerItem
           label={'Liked Songs'}

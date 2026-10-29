@@ -17,6 +17,8 @@ import Animated, {
 import FastImage from 'react-native-fast-image'; // Optimized for performance
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Feather from 'react-native-vector-icons/Feather';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import AddToPlaylistModal from '../components/AddToPlaylistModal';
 import {fontSize, iconSizes, spacing} from '../constants/dimensions';
 import {fontFamilies} from '../constants/fonts';
 import PlayerShuffleToggle from '../components/PlayerShuffleToggle';
@@ -47,6 +49,7 @@ const PlayerScreen = () => {
   const activeTrack = useActiveTrack();
   const navigation = useNavigation();
   const [isMute, setIsMute] = useState(false);
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
   const playbackState = usePlaybackState(); // Get playback state
   // Generate a random image on load
   const [randomImage, setRandomImage] = useState(
@@ -151,13 +154,24 @@ const PlayerScreen = () => {
             {activeTrack?.artist || 'Unknown Artist'}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => addToLiked(activeTrack)}>
-          <AntDesign
-            name={isExist(likedSongs, activeTrack) ? 'heart' : 'hearto'}
-            color={colors.iconSecondary}
-            size={iconSizes.md}
-          />
-        </TouchableOpacity>
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity
+            style={{marginRight: spacing.md}}
+            onPress={() => setIsPlaylistModalOpen(true)}>
+            <MaterialIcons
+              name="playlist-add"
+              color={colors.iconSecondary}
+              size={iconSizes.lg}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => addToLiked(activeTrack)}>
+            <AntDesign
+              name={isExist(likedSongs, activeTrack) ? 'heart' : 'hearto'}
+              color={colors.iconSecondary}
+              size={iconSizes.md}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Player Controls */}
@@ -183,6 +197,12 @@ const PlayerScreen = () => {
         <PlayPauseButton size={iconSizes.xl} />
         <GotoNextButton size={iconSizes.xl} />
       </View>
+
+      <AddToPlaylistModal
+        visible={isPlaylistModalOpen}
+        onClose={() => setIsPlaylistModalOpen(false)}
+        song={activeTrack}
+      />
     </View>
   );
 };
@@ -236,6 +256,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   titleRowHeartContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButtonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
