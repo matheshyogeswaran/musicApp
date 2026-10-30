@@ -9,8 +9,10 @@ import {
   Platform,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import RNFS from 'react-native-fs';
+import DocumentPicker, {types, isCancel} from 'react-native-document-picker';
 import TrackPlayer, {useActiveTrack} from 'react-native-track-player';
 import SongCard from '../components/SongCard';
 import FloatingPlayer from '../components/FloatingPlayer';
@@ -25,6 +27,7 @@ import {fontFamilies} from '../constants/fonts';
 import useSongStore from '../store/songStore';
 import usePlaylistStore from '../store/playlistStore';
 import useLikeSongs from '../store/likeStore';
+import {recommendedSongs} from '../data/songs';
 
 const HomeScreen = () => {
   const {colors} = useTheme();
@@ -76,28 +79,51 @@ const HomeScreen = () => {
   // Recursive directory scanner
   const scanDirectories = async (directoryPath, audioFiles = []) => {
     try {
+      if (!directoryPath) {
+        return audioFiles;
+      }
+      const dirExists = await RNFS.exists(directoryPath);
+      if (!dirExists) {
+        return audioFiles;
+      }
+
       const items = await RNFS.readDir(directoryPath);
 
       for (const item of items) {
         if (item.isDirectory()) {
           await scanDirectories(item.path, audioFiles);
-        } else if (
-          item.name.endsWith('.mp3') ||
-          item.name.endsWith('.wav') ||
-          item.name.endsWith('.m4a') ||
-          item.name.endsWith('.flac')
-        ) {
-          audioFiles.push({
-            url: 'file://' + item.path,
-            title: item.name.replace(/\.[^/.]+$/, ''),
-            artist: 'Unknown Artist',
-            artwork: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80',
-          });
+        } else {
+          const lowerName = (item.name || '').toLowerCase();
+          const isAudio =
+            lowerName.endsWith('.mp3') ||
+            lowerName.endsWith('.wav') ||
+            lowerName.endsWith('.m4a') ||
+            lowerName.endsWith('.flac') ||
+            lowerName.endsWith('.aac') ||
+            lowerName.endsWith('.aiff') ||
+            lowerName.endsWith('.caf');
+
+          if (isAudio) {
+            const cleanPath = item.path.replace(/^file:\/\//, '');
+            // Encode the path for iOS AVPlayer so spaces/special characters don't break playback
+            const safeUrl =
+              Platform.OS === 'ios'
+                ? 'file://' + encodeURI(cleanPath)
+                : 'file://' + cleanPath;
+
+            audioFiles.push({
+              url: safeUrl,
+              title: item.name.replace(/\.[^/.]+$/, ''),
+              artist: 'Local Audio',
+              artwork:
+                'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80',
+            });
+          }
         }
       }
       return audioFiles;
     } catch (err) {
-      return [];
+      return audioFiles;
     }
   };
 
@@ -107,18 +133,38 @@ const HomeScreen = () => {
       setIsLoading(true);
       const permissionGranted = await requestPermission();
       if (!permissionGranted) {
+        setIsLoading(false);
         return;
       }
 
-      const basePaths = [
-        RNFS.DownloadDirectoryPath,
-        RNFS.DocumentDirectoryPath,
-        RNFS.ExternalStorageDirectoryPath + '/Music',
-        RNFS.ExternalStorageDirectoryPath,
-      ];
+      let basePaths = [];
+      if (Platform.OS === 'ios') {
+        const musicDir = `${RNFS.DocumentDirectoryPath}/Music`;
+        try {
+          const exists = await RNFS.exists(musicDir);
+          if (!exists) {
+            await RNFS.mkdir(musicDir);
+          }
+        } catch (e) {
+          console.warn('Could not create Music dir on iOS:', e);
+        }
+
+        basePaths = [
+          RNFS.DocumentDirectoryPath,
+          musicDir,
+          RNFS.MainBundlePath,
+        ].filter(Boolean);
+      } else {
+        basePaths = [
+          RNFS.DownloadDirectoryPath,
+          RNFS.DocumentDirectoryPath,
+          `${RNFS.DocumentDirectoryPath}/Music`,
+          RNFS.ExternalStorageDirectoryPath + '/Music',
+          RNFS.ExternalStorageDirectoryPath,
+        ].filter(Boolean);
+      }
 
       let allAudioFiles = [];
-
       for (const path of basePaths) {
         const audioFiles = await scanDirectories(path);
         allAudioFiles = [...allAudioFiles, ...audioFiles];
@@ -132,10 +178,114 @@ const HomeScreen = () => {
       setLocalSongs(uniqueSongs);
       useSongStore.getState().setSongs(uniqueSongs);
 
-      await TrackPlayer.reset();
-      await TrackPlayer.add(uniqueSongs);
+      if (uniqueSongs.length > 0) {
+        await TrackPlayer.reset();
+        await TrackPlayer.add(uniqueSongs);
+      }
     } catch (err) {
       console.warn('Error scanning songs:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Import audio files from Files app / iCloud Drive / Storage
+  const handleImportAudio = async () => {
+    try {
+      const results = await DocumentPicker.pick({
+        type: [types.audio],
+        allowMultiSelection: true,
+        copyTo: 'cachesDirectory',
+      });
+
+      if (!results || results.length === 0) {
+        return;
+      }
+
+      setIsLoading(true);
+      const musicDir = `${RNFS.DocumentDirectoryPath}/Music`;
+      const exists = await RNFS.exists(musicDir);
+      if (!exists) {
+        await RNFS.mkdir(musicDir);
+      }
+
+      let importedCount = 0;
+      for (const file of results) {
+        const fileName = file.name || `imported_${Date.now()}.mp3`;
+        const destPath = `${musicDir}/${fileName}`;
+        const sourcePath = file.fileCopyUri || file.uri;
+        if (sourcePath) {
+          const cleanSource = decodeURIComponent(
+            sourcePath.replace(/^file:\/\//, ''),
+          );
+          try {
+            await RNFS.copyFile(cleanSource, destPath);
+            importedCount++;
+          } catch (copyErr) {
+            console.warn('Error copying imported file:', copyErr);
+          }
+        }
+      }
+
+      await loadAllSongs();
+      if (importedCount > 0) {
+        Alert.alert(
+          'Import Successful',
+          `Added ${importedCount} ${
+            importedCount === 1 ? 'track' : 'tracks'
+          } to your local library.`,
+        );
+      }
+    } catch (err) {
+      if (isCancel(err)) {
+        // User closed picker without selecting
+      } else {
+        console.warn('Error picking audio document:', err);
+        Alert.alert(
+          'Import Notice',
+          'Could not import the selected audio file. Please try again.',
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load sample offline tracks for immediate playback
+  const handleLoadSampleTracks = async () => {
+    try {
+      setIsLoading(true);
+      const musicDir = `${RNFS.DocumentDirectoryPath}/Music`;
+      const exists = await RNFS.exists(musicDir);
+      if (!exists) {
+        await RNFS.mkdir(musicDir);
+      }
+
+      const samples = recommendedSongs.slice(0, 3);
+      for (const track of samples) {
+        const safeName =
+          track.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + '.mp3';
+        const dest = `${musicDir}/${safeName}`;
+        const already = await RNFS.exists(dest);
+        if (!already) {
+          try {
+            await RNFS.downloadFile({
+              fromUrl: track.url,
+              toFile: dest,
+            }).promise;
+          } catch (dlErr) {
+            console.warn('Download sample error:', dlErr);
+          }
+        }
+      }
+
+      await loadAllSongs();
+    } catch (err) {
+      console.warn('Error loading sample tracks:', err);
+      setLocalSongs(recommendedSongs);
+      useSongStore.getState().setSongs(recommendedSongs);
+      await TrackPlayer.reset();
+      await TrackPlayer.add(recommendedSongs);
     } finally {
       setIsLoading(false);
     }
@@ -204,7 +354,8 @@ const HomeScreen = () => {
           style={[
             styles.searchBarContainer,
             {
-              backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '1A',
+              backgroundColor:
+                colors.surfaceElevated || colors.maximumTintColor + '1A',
               borderColor: colors.border || 'rgba(255,255,255,0.08)',
             },
           ]}>
@@ -248,7 +399,8 @@ const HomeScreen = () => {
               Your Music
             </Text>
             <Text style={[styles.heroSubtitle, {color: colors.textSecondary}]}>
-              {localSongs.length} {localSongs.length === 1 ? 'audio file' : 'audio files'} discovered
+              {localSongs.length}{' '}
+              {localSongs.length === 1 ? 'audio file' : 'audio files'} discovered
             </Text>
           </View>
 
@@ -262,24 +414,55 @@ const HomeScreen = () => {
               disabled={localSongs.length === 0}
               activeOpacity={0.8}
               onPress={handleShuffleAll}>
-              <Feather name="shuffle" size={16} color="#FFFFFF" style={styles.iconSpacingSm} />
+              <Feather
+                name="shuffle"
+                size={15}
+                color="#FFFFFF"
+                style={styles.iconSpacingSm}
+              />
               <Text style={styles.shuffleBtnText}>Shuffle</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.importBtn,
+                {
+                  backgroundColor:
+                    colors.surfaceElevated || colors.maximumTintColor + '22',
+                  borderColor: colors.border || 'rgba(255,255,255,0.1)',
+                },
+              ]}
+              onPress={handleImportAudio}
+              activeOpacity={0.8}>
+              <Feather
+                name="folder-plus"
+                size={16}
+                color={colors.primary || '#6366F1'}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.refreshBtn,
                 {
-                  backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '22',
+                  backgroundColor:
+                    colors.surfaceElevated || colors.maximumTintColor + '22',
                   borderColor: colors.border || 'rgba(255,255,255,0.1)',
                 },
               ]}
               disabled={isLoading}
               onPress={loadAllSongs}>
               {isLoading ? (
-                <ActivityIndicator size="small" color={colors.primary || '#6366F1'} />
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary || '#6366F1'}
+                />
               ) : (
-                <Feather name="refresh-cw" size={16} color={colors.iconPrimary} />
+                <Feather
+                  name="refresh-cw"
+                  size={16}
+                  color={colors.iconPrimary}
+                />
               )}
             </TouchableOpacity>
           </View>
@@ -296,7 +479,8 @@ const HomeScreen = () => {
               : [
                   styles.tabPillInactive,
                   {
-                    backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '15',
+                    backgroundColor:
+                      colors.surfaceElevated || colors.maximumTintColor + '15',
                     borderColor: colors.border || 'rgba(255,255,255,0.06)',
                   },
                 ],
@@ -305,7 +489,9 @@ const HomeScreen = () => {
           <Text
             style={[
               styles.tabText,
-              activeTab === 'ALL' ? styles.tabTextActive : {color: colors.textSecondary},
+              activeTab === 'ALL'
+                ? styles.tabTextActive
+                : {color: colors.textSecondary},
             ]}>
             All Songs ({localSongs.length})
           </Text>
@@ -316,7 +502,8 @@ const HomeScreen = () => {
             styles.tabPill,
             styles.tabPillInactive,
             {
-              backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '15',
+              backgroundColor:
+                colors.surfaceElevated || colors.maximumTintColor + '15',
               borderColor: colors.border || 'rgba(255,255,255,0.06)',
             },
           ]}
@@ -337,7 +524,8 @@ const HomeScreen = () => {
             styles.tabPill,
             styles.tabPillInactive,
             {
-              backgroundColor: colors.surfaceElevated || colors.maximumTintColor + '15',
+              backgroundColor:
+                colors.surfaceElevated || colors.maximumTintColor + '15',
               borderColor: colors.border || 'rgba(255,255,255,0.06)',
             },
           ]}
@@ -366,8 +554,15 @@ const HomeScreen = () => {
           <View style={styles.emptyContainer}>
             {isLoading ? (
               <View style={styles.loadingBox}>
-                <ActivityIndicator size="large" color={colors.primary || '#6366F1'} />
-                <Text style={[styles.emptySubtitle, {color: colors.textSecondary, marginTop: spacing.md}]}>
+                <ActivityIndicator
+                  size="large"
+                  color={colors.primary || '#6366F1'}
+                />
+                <Text
+                  style={[
+                    styles.emptySubtitle,
+                    {color: colors.textSecondary, marginTop: spacing.md},
+                  ]}>
                   Scanning device audio files...
                 </Text>
               </View>
@@ -380,22 +575,90 @@ const HomeScreen = () => {
                   style={{marginBottom: spacing.md}}
                 />
                 <Text style={[styles.emptyTitle, {color: colors.textPrimary}]}>
-                  {searchQuery ? 'No Results Found' : 'No Audio Files Found'}
+                  {searchQuery ? 'No Results Found' : 'No Local Songs Found'}
                 </Text>
-                <Text style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
+                <Text
+                  style={[styles.emptySubtitle, {color: colors.textSecondary}]}>
                   {searchQuery
                     ? `No songs matched "${searchQuery}". Check the spelling.`
-                    : 'Ensure audio files (.mp3, .wav, .m4a) are in Downloads or Music folder.'}
+                    : Platform.OS === 'ios'
+                    ? 'Import audio files from your Files app / iCloud Drive, transfer via Finder, or load sample tracks.'
+                    : 'Ensure audio files are in Downloads, Music, or import directly from device files.'}
                 </Text>
+
                 {!searchQuery && (
-                  <TouchableOpacity
-                    style={[
-                      styles.rescanBtn,
-                      {backgroundColor: colors.primary || '#6366F1'},
-                    ]}
-                    onPress={loadAllSongs}>
-                    <Text style={styles.rescanBtnText}>Rescan Storage</Text>
-                  </TouchableOpacity>
+                  <View style={styles.emptyActionButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.emptyPrimaryBtn,
+                        {backgroundColor: colors.primary || '#6366F1'},
+                      ]}
+                      onPress={handleImportAudio}
+                      activeOpacity={0.8}>
+                      <Feather
+                        name="folder-plus"
+                        size={16}
+                        color="#FFFFFF"
+                        style={styles.iconSpacingSm}
+                      />
+                      <Text style={styles.emptyPrimaryBtnText}>
+                        Import from Files
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.emptySecondaryBtn,
+                        {
+                          backgroundColor:
+                            colors.surfaceElevated ||
+                            colors.maximumTintColor + '22',
+                          borderColor:
+                            colors.border || 'rgba(255,255,255,0.1)',
+                        },
+                      ]}
+                      onPress={handleLoadSampleTracks}
+                      activeOpacity={0.8}>
+                      <Feather
+                        name="download-cloud"
+                        size={15}
+                        color={colors.primary || '#6366F1'}
+                        style={styles.iconSpacingXs}
+                      />
+                      <Text
+                        style={[
+                          styles.emptySecondaryBtnText,
+                          {color: colors.textPrimary},
+                        ]}>
+                        Load Sample Tracks
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.emptyGhostBtn,
+                        {
+                          borderColor:
+                            colors.border || 'rgba(255,255,255,0.08)',
+                        },
+                      ]}
+                      onPress={loadAllSongs}
+                      activeOpacity={0.8}>
+                      <Feather
+                        name="refresh-cw"
+                        size={14}
+                        color={colors.textSecondary}
+                        style={styles.iconSpacingXs}
+                      />
+                      <Text
+                        style={[
+                          styles.emptyGhostBtnText,
+                          {color: colors.textSecondary},
+                        ]}>
+                        Rescan Storage
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             )}
@@ -477,7 +740,7 @@ const styles = StyleSheet.create({
   heroActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs + 2,
   },
   shuffleBtn: {
     flexDirection: 'row',
@@ -490,6 +753,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: fontFamilies.bold,
     fontSize: fontSize.sm,
+  },
+  importBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   refreshBtn: {
     width: 36,
@@ -535,7 +806,7 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 48,
     paddingHorizontal: spacing.xl,
   },
   loadingBox: {
@@ -543,6 +814,7 @@ const styles = StyleSheet.create({
   },
   emptyBox: {
     alignItems: 'center',
+    width: '100%',
   },
   emptyTitle: {
     fontFamily: fontFamilies.bold,
@@ -556,14 +828,53 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: spacing.lg,
   },
-  rescanBtn: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.full,
+  emptyActionButtons: {
+    width: '100%',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  rescanBtnText: {
+  emptyPrimaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.full,
+    width: '80%',
+    maxWidth: 260,
+  },
+  emptyPrimaryBtnText: {
     color: '#FFFFFF',
     fontFamily: fontFamilies.bold,
     fontSize: fontSize.sm,
+  },
+  emptySecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    width: '80%',
+    maxWidth: 260,
+  },
+  emptySecondaryBtnText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontSize.sm,
+  },
+  emptyGhostBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    marginTop: spacing.xs,
+  },
+  emptyGhostBtnText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontSize.xs,
   },
 });
